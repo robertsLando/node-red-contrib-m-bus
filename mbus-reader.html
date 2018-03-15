@@ -2,7 +2,7 @@
 <script type="text/javascript">
   RED.nodes.registerType('mbus-reader', {
     category: 'M Bus',
-    color: '#405ba8',
+    color: '#03A9F4',
     defaults: {
       name: {value: ''},
       client: {type: 'mbus-client', required: true},
@@ -22,12 +22,12 @@
 
 <script type="text/x-red" data-template-name="mbus-reader">
     <div class="form-row">
-        <label for="node-input-name"><i class="icon-tag"></i> <span data-i18n="node-red:common.label.name"></span></label>
-        <input type="text" id="node-input-name" placeholder="Name">
-    </div>
-    <div class="form-row">
         <label for="node-input-client"><i class="icon-globe"></i> <span data-i18n="mbus.label.client"></span></label>
         <input type="text" id="node-input-client">
+    </div>
+    <div class="form-row">
+        <label for="node-input-name"><i class="icon-tag"></i> <span data-i18n="node-red:common.label.name"></span></label>
+        <input type="text" id="node-input-name" placeholder="Name">
     </div>
 </script>
 
