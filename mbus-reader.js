@@ -10,29 +10,44 @@ module.exports = function (RED) {
     let client = RED.nodes.getNode(config.client)
     let node = this
 
-    if(client.connect)
+
+    node.onConnect = function () {
       setStatus('Connected', 'success')
-    else
-      setStatus('Disconnected', 'error')
+    }
 
+    node.onError = function (failureMsg) {
+      setStatus("Error: " + failureMsg, 'error');
+    }
 
-    // node.onConnect = function () {
-    //   setStatus('Connected')
-    // }
-    //
-    // node.onError = function (failureMsg) {
-    //   setStatus(failureMsg, 'error')
-    //   node.warn(failureMsg)
-    // }
-    //
-    // node.onClose = function () {
-    //   setStatus('Closed', 'warning')
-    // }
-    //
-    // client.on('init', node.onInit)
-    // client.on('connected', node.onConnect)
-    // client.on('error', node.onError)
-    // client.on('closed', node.onClose)
+    node.onClose = function () {
+      setStatus('Closed', 'warning')
+    }
+
+    node.onScan = function () {
+      setStatus("Scanning devices...", 'info')
+    }
+
+    node.onScanComplete = function (devices) {
+      setStatus("Scan complete, " + devices.length + " devices found", 'success')
+      node.send({payload: devices});
+    }
+
+    node.onDeviceUpdated = function (device) {
+      setStatus("Device " + device.SlaveInformation.Id + " updated", 'success')
+      node.send({payload: device});
+    }
+
+    node.onReconnect = function () {
+      setStatus('Reconnecting', 'warning')
+    }
+
+    client.on('connected', node.onConnect)
+    client.on('error', node.onError)
+    client.on('closed', node.onClose)
+    client.on('scan', node.onScan)
+    client.on('scanComplete', node.onScanComplete)
+    client.on('deviceUpdated', node.onDeviceUpdated)
+    client.on('reconnect', node.onReconnect)
 
     node.on('input', function (msg) {
       if (!client) {
@@ -47,12 +62,7 @@ module.exports = function (RED) {
 
           switch (msg.topic) {
             case 'scan':
-            client.scanSecondary(function(err, data) {
-              if(err)
-              console.log('err: ' + err);
-              else
-               node.send({payload: data})
-            });
+
             break;
             case 'read':
             msg.payload.address = parseInt(msg.payload.address) || 0
@@ -63,13 +73,6 @@ module.exports = function (RED) {
               node.error('Address Not Valid', msg)
               return
             }
-
-            client.getData(msg.payload.address, function(err, data) {
-              if(err)
-              console.log('err: ' + err);
-              else
-               node.send({payload: data})
-            });
 
             break;
             default:
