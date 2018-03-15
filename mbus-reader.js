@@ -8,8 +8,13 @@ module.exports = function (RED) {
     this.name = config.name
 
     let client = RED.nodes.getNode(config.client)
+    let node = this
 
-    setStatus('Connected', 'success')
+    if(client.connect)
+      setStatus('Connected', 'success')
+    else
+      setStatus('Disconnected', 'error')
+
 
     // node.onConnect = function () {
     //   setStatus('Connected')
@@ -30,7 +35,7 @@ module.exports = function (RED) {
     // client.on('closed', node.onClose)
 
     node.on('input', function (msg) {
-      if (!client.client) {
+      if (!client) {
         return
       }
 
@@ -39,6 +44,7 @@ module.exports = function (RED) {
           if (typeof msg.payload === 'string') {
             msg.payload = JSON.parse(msg.payload)
           }
+
           switch (msg.topic) {
             case 'scan':
             client.scanSecondary(function(err, data) {

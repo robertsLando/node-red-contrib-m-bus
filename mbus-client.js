@@ -5,7 +5,7 @@ module.exports = function (RED) {
   function MbusClientNode (config) {
     RED.nodes.createNode(this, config)
 
-    let mbusMaster = require('node-mbus')
+    let MbusMaster = require('node-mbus')
 
     this.clienttype = config.clienttype
     this.tcpHost = config.tcpHost
