@@ -20,7 +20,7 @@ module.exports = function (RED) {
     }
 
     node.onClose = function () {
-      setStatus('Closed', 'warning')
+      setStatus('Closed', 'error')
     }
 
     node.onScan = function () {
@@ -41,13 +41,13 @@ module.exports = function (RED) {
       setStatus('Reconnecting', 'warning')
     }
 
-    client.on('connected', node.onConnect)
-    client.on('error', node.onError)
-    client.on('closed', node.onClose)
-    client.on('scan', node.onScan)
-    client.on('scanComplete', node.onScanComplete)
-    client.on('deviceUpdated', node.onDeviceUpdated)
-    client.on('reconnect', node.onReconnect)
+    client.on('mbconnected', node.onConnect)
+    client.on('mberror', node.onError)
+    client.on('mbclosed', node.onClose)
+    client.on('mbscan', node.onScan)
+    client.on('mbscanComplete', node.onScanComplete)
+    client.on('mbdeviceUpdated', node.onDeviceUpdated)
+    client.on('mbreconnect', node.onReconnect)
 
     node.on('input', function (msg) {
       if (!client) {

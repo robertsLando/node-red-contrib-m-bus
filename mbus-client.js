@@ -24,25 +24,34 @@ module.exports = function (RED) {
 
     node.onConnect = function(err){
       if(err){
-        node.emit('error', err.message);
+        node.emit('mberror', err.message);
         node.error('Error while connecting', err.message);
+        node.restartConnection()
       }
       else{
+        node.emit('mbscan');
         node.warn('Connected, scanning started...');
-        node.emit('scan');
+
+        // node.client.getData(1, function(err, data){
+        //   if (err) {
+        //       node.emit('mberror', err.message);
+        //   }else{
+        //     node.emit('mbdeviceUpdated', data);
+        //   }
+        // })
 
         node.client.scanSecondary(function(err, data) {
           if(err){
-           node.emit('error', err.message);
+           node.emit('mberror', err.message);
            node.error('Error while scanning', err.message);
+           node.restartConnection()
           }
           else{
             node.devices = data;
             node.errors = {};
             node.data = {};
             node.lastUpdated = 0;
-            node.warn('Scan compleated', data);
-            node.emit('scanComplete', data);
+            node.emit('mbscanComplete', data);
             updateDevices();
           }
         });
@@ -52,7 +61,7 @@ module.exports = function (RED) {
     function updateDevices(){
       if(!node.devices || node.devices.length == 0)
       {
-        node.emit('error', "No devices found update");
+        node.emit('mberror', "No devices found update");
         node.error('No devices to update');
         return;
       }
@@ -64,18 +73,17 @@ module.exports = function (RED) {
 
       node.client.getData(addr, function(err, data){
         if (err) {
-            node.emit('error', err.message);
+            node.emit('mberror', err.message);
             node.errors[addr] = true;
             node.error('Error while reading device', addr);
             //adapter.log.error('M-Bus Devices ' + Object.keys(errorDevices).length + ' errored from ' + Object.keys(mBusDevices).length);
             if (Object.keys(node.errors).length === node.devices.length) {
-                restartConnection()
+                node.restartConnection()
             }
         }else{
           node.lastUpdated++;
           node.data[addr] = data;
-          node.warn('Device Updated', data);
-          node.emit('deviceUpdated', data);
+          node.emit('mbdeviceUpdated', data);
           updateDevices();
         }
       })
@@ -83,7 +91,7 @@ module.exports = function (RED) {
 
     node.restartConnection = function(err){
 
-      node.emit('reconnect')
+      node.emit('mbreconnect')
       node.warn('Restarting client')
 
       node.reconnectTimeout = setTimeout(function(){
@@ -130,11 +138,11 @@ module.exports = function (RED) {
         node.client.close(function (err) {
           if(err) node.error("Error while closing client: "+err.message)
           else node.warn('Connection closed')
-          node.emit('closed');
+          node.emit('mbclosed');
           done()
         });
       }else
-        node.emit('closed');
+        node.emit('mbclosed');
         done()
     });
 
