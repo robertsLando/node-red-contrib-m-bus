@@ -1,0 +1,37 @@
+
+<script type="text/javascript">
+  RED.nodes.registerType('mbus-reader', {
+    category: 'M Bus',
+    color: '#405ba8',
+    defaults: {
+      name: {value: ''},
+      client: {type: 'mbus-client', required: true},
+    },
+    inputs: 1,
+    outputs: 1,
+    align: "left",
+    icon: 'bridge.png',
+    paletteLabel: 'M-Bus Reader',
+    label: function () {
+      return this.name || 'M-Bus Reader'
+    },
+    oneditprepare: function () {
+    }
+  })
+</script>
+
+<script type="text/x-red" data-template-name="mbus-reader">
+    <div class="form-row">
+        <label for="node-input-name"><i class="icon-tag"></i> <span data-i18n="node-red:common.label.name"></span></label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+    <div class="form-row">
+        <label for="node-input-client"><i class="icon-globe"></i> <span data-i18n="mbus.label.client"></span></label>
+        <input type="text" id="node-input-client">
+    </div>
+</script>
+
+
+<script type="text/x-red" data-help-name="mbus-reader">
+      <p>The M-Bus Reader</p>
+</script>

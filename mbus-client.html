@@ -1,0 +1,166 @@
+<script type="text/javascript">
+  RED.nodes.registerType('mbus-client', {
+    category: 'config',
+    defaults: {
+
+      name: {value: ''},
+      clienttype: {value: 'tcp', required: true},
+
+      tcpHost: {value: '127.0.0.1', required: true},
+      tcpPort: {value: 500, required: true, validate: RED.validators.number()},
+      tcpType: {value: 'DEFAULT', required: true},
+
+      serialPort: {value: '/dev/ttyUSB', required: true},
+      serialBaudrate: {value: 2400, required: true, validate: RED.validators.number()},
+
+      autoConnect: {value: true, required: true},
+    },
+    label: function () {
+      let node = this
+      if (node.clienttype == 'tcp') {
+        return node.name || 'mbus-tcp@' + node.tcpHost + ':' + node.tcpPort
+      } else {
+        return node.name || 'mbus-serial@' + node.serialPort + ':' + node.serialBaudrate
+      }
+    },
+    oneditprepare: function () {
+
+      let previous = null
+      let node = this
+      node.ports = []
+      let clientTypeSelector = $('#node-config-input-clienttype')
+      let inputsSerial = $('#node-config-inputs-serial')
+      let inputsTCP = $('#node-config-inputs-tcp')
+
+      clientTypeSelector.on('focus', function () {
+        previous = this.value
+      }).change(function () {
+
+        if (previous == null) {
+          previous = $('#node-config-input-clienttype').val()
+        }
+
+        switch (clientTypeSelector.val()) {
+          case 'tcp':
+            inputsSerial.hide()
+            inputsTCP.show()
+
+            if (node.tcpHost) {
+              node.tcpHost.required = true
+              node.tcpPort.required = true
+            }
+
+            if (node.serialPort) {
+              node.serialPort.required = false
+              node.serialBaudrate.required = false
+            }
+            break
+          case 'serial':
+
+            inputsSerial.show()
+            inputsTCP.hide()
+
+            if (node.tcpHost) {
+              node.tcpHost.required = false
+              node.tcpPort.required = false
+            }
+
+            if (node.serialPort) {
+              node.serialPort.required = true
+              node.serialBaudrate.required = true
+            }
+            break
+          default:
+            break
+        }
+      })
+
+      try {
+        $('#node-config-input-serialPort').autocomplete('destroy')
+      }
+      catch (err) {
+      }
+
+      $('#node-config-lookup-serial').click(function () {
+        $('#node-config-lookup-serial').addClass('disabled')
+
+        $.getJSON('/mbus/serial/ports', function (data) {
+          $('#node-config-lookup-serial').removeClass('disabled')
+          node.ports = []
+
+          $.each(data, function (i, port) {
+            node.ports.push(port.comName)
+          })
+
+          $('#node-config-input-serialPort').autocomplete({
+            source: node.ports,
+            minLength: 0,
+            close: function (event, ui) {
+              $('#node-config-input-serialPort').autocomplete('destroy')
+            }
+          }).autocomplete('search', '')
+        })
+      })
+    }
+  })
+</script>
+
+<script type="text/x-red" data-template-name="mbus-client">
+    <div class="form-row">
+        <label for="node-config-input-name"><i class="icon-tag"></i> <span data-i18n="node-red:common.label.name"></span></label>
+        <input type="text" id="node-config-input-name" placeholder="Name">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-clienttype"><i class="icon-bookmark"></i> <span data-i18n="mbus.label.type"></span></label>
+        <select type="text" id="node-config-input-clienttype" style="width:140px;">
+            <option value="tcp" select>TCP</option>
+            <option value="serial">Serial</option>
+        </select>
+    </div>
+    <hr>
+    <div id="node-config-inputs-tcp">
+        <div class="form-row">
+            <label for="node-config-input-tcpHost"><i class="icon-bookmark"></i> <span data-i18n="mbus.label.host"></span></label>
+            <input type="text" id="node-config-input-tcpHost">
+        </div>
+        <div class="form-row">
+            <label for="node-config-input-tcpPort"><i class="icon-bookmark"></i> <span data-i18n="mbus.label.port"></span></label>
+            <input type="text" id="node-config-input-tcpPort" placeholder="500">
+        </div>
+    </div>
+    <div id="node-config-inputs-serial">
+        <div class="form-row">
+            <label for="node-config-input-serialPort"><i class="fa fa-random"></i> <span data-i18n="mbus.label.serialport"></span></label>
+            <input type="text" id="node-config-input-serialPort" style="width:60%;" placeholder="/dev/ttyUSB or COM4">
+            <a id="node-config-lookup-serial" class="btn"><i id="node-config-lookup-serial-icon" class="fa fa-search"></i></a>
+        </div>
+        <div class="form-row">
+            <label for="node-config-input-serialBaudrate"><i class="icon-bookmark"></i> <span data-i18n="mbus.label.baudRate"></span></label>
+            <select id="node-config-input-serialBaudrate" style="max-width:140px">
+                <option value="115200">115200</option>
+                <option value="57600">57600</option>
+                <option value="38400">38400</option>
+                <option value="19200">19200</option>
+                <option value="9600">9600</option>
+                <option value="4800">4800</option>
+                <option value="2400">2400</option>
+                <option value="1200">1200</option>
+                <option value="300">300</option>
+                <option value="110">110</option>
+                <option value="75">75</option>
+            </select>
+        </div>
+    </div>
+	<hr>
+    <div class="form-row">
+        <label for="node-config-input-autoConnect"><span data-i18n="mbus.label.autoConnect"></span></label>
+        <input type="checkbox" id="node-config-input-autoConnect">
+    </div>
+
+</script>
+
+<script type="text/x-red" data-help-name="mbus-client">
+
+    <p>The M-Bus Client</p>
+
+</script>

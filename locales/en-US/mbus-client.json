@@ -1,0 +1,12 @@
+{
+  "mbus": {
+    "label": {
+      "type": "Type",
+      "host": "Host",
+      "port": "Port",
+      "serialport": "Serial port",
+      "baudRate": "Baud rate",
+      "autoConnect": "Auto connect"
+    }
+  }
+}

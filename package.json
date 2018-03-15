@@ -1,0 +1,35 @@
+{
+  "name": "node-red-contrib-m-bus",
+  "version": "0.1.0",
+  "description": "Node-Red node for M-Bus protocol",
+  "main": "index.js",
+  "node-red": {
+    "nodes": {
+      "mbus-client": "mbus-client.js",
+      "mbus-reader": "mbus-reader.js"
+    }
+  },
+  "dependencies": {
+    "node-mbus": "^0.2.3",
+    "serialport": "^6.1.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/robertsLando/node-red-contrib-m-bus.git"
+  },
+  "keywords": [
+    "m-bus",
+    "node-red",
+    "mbus"
+  ],
+  "author": "Daniel Lando",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/robertsLando/node-red-contrib-m-bus/issues"
+  },
+  "homepage": "https://github.com/robertsLando/node-red-contrib-m-bus#readme"
+}
