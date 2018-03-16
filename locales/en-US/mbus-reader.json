@@ -1,7 +1,8 @@
 {
   "mbus": {
     "label": {
-      "address": "Address"
+      "address": "Address",
+      "client": "Client"
     }
   }
 }
