@@ -6,6 +6,7 @@ module.exports = function (RED) {
     RED.nodes.createNode(this, config)
 
     let MbusMaster = require('node-mbus')
+    let RECONNECT_TIMEOUT = 5000;
 
     this.clienttype = config.clienttype
     this.tcpHost = config.tcpHost
@@ -21,47 +22,53 @@ module.exports = function (RED) {
     node.client = null
     node.devices = {}
     node.reconnectTimeout = null
+    node.scanTimeout = null
+    node.lastStatus = null;
+    node.started = false;
 
     node.onConnect = function(err){
       if(err){
-        node.emit('mberror', err.message);
+        node.emit('mbError', err.message);
         node.error('Error while connecting', err.message);
         node.restartConnection()
       }
       else{
-        node.emit('mbscan');
         node.warn('Connected, scanning started...');
+        node.scanTimeout = setTimeout(node.scanSecondary, 1000);
+      }
+    }
 
-        // node.client.getData(1, function(err, data){
-        //   if (err) {
-        //       node.emit('mberror', err.message);
-        //   }else{
-        //     node.emit('mbdeviceUpdated', data);
-        //   }
-        // })
+    node.scanSecondary = function(){
+      node.emit('mbScan');
+      try {
 
         node.client.scanSecondary(function(err, data) {
           if(err){
-           node.emit('mberror', err.message);
-           node.error('Error while scanning', err.message);
-           node.restartConnection()
+            node.emit('mbError', err.message);
+            node.error('Error while scanning', err.message);
+            node.restartConnection()
           }
           else{
             node.devices = data;
             node.errors = {};
             node.data = {};
             node.lastUpdated = 0;
-            node.emit('mbscanComplete', data);
+            node.emit('mbScanComplete', data);
             updateDevices();
           }
         });
+
+      } catch (e) {
+        node.emit('mbError', e.message);
+        node.error('Error while scanning', e.message);
+        node.restartConnection()
       }
     }
 
     function updateDevices(){
       if(!node.devices || node.devices.length == 0)
       {
-        node.emit('mberror', "No devices found update");
+        node.emit('mbError', "No devices found update");
         node.error('No devices to update');
         return;
       }
@@ -73,7 +80,7 @@ module.exports = function (RED) {
 
       node.client.getData(addr, function(err, data){
         if (err) {
-            node.emit('mberror', err.message);
+            node.emit('mbError', err.message);
             node.errors[addr] = true;
             node.error('Error while reading device', addr);
             //adapter.log.error('M-Bus Devices ' + Object.keys(errorDevices).length + ' errored from ' + Object.keys(mBusDevices).length);
@@ -83,7 +90,7 @@ module.exports = function (RED) {
         }else{
           node.lastUpdated++;
           node.data[addr] = data;
-          node.emit('mbdeviceUpdated', data);
+          node.emit('mbDeviceUpdated', data);
           updateDevices();
         }
       })
@@ -91,21 +98,26 @@ module.exports = function (RED) {
 
     node.restartConnection = function(err){
 
-      node.emit('mbreconnect')
+      node.emit('mbReconnect')
       node.warn('Restarting client')
 
       node.reconnectTimeout = setTimeout(function(){
       if(node.client){
         node.client.close(function(err){
           if(err) node.error("Error while closing connection", err.message);
-          node.connect(node.onConnect);
+          node.connect(true);
         })
       }else
-        node.connect(node.onConnect);
-      }, 5000);
+        node.connect(true);
+      }, RECONNECT_TIMEOUT);
     }
 
-    node.connect = function(cb){
+    node.connect = function(reconnecting){
+
+      if(node.started && !reconnecting)
+        return;
+
+      node.started = true;
 
       node.warn('Opening connection...')
 
@@ -120,7 +132,7 @@ module.exports = function (RED) {
       }
 
       node.client = new MbusMaster(mbusOptions);
-      node.client.connect(cb);
+      node.client.connect(node.onConnect);
     }
 
     node.on('close', function (done) {
@@ -128,26 +140,29 @@ module.exports = function (RED) {
       node.errors = {};
       node.data = {};
       node.lastUpdated = 0;
+      node.started = false;
 
       if(node.reconnectTimeout){
         clearTimeout(node.reconnectTimeout);
         node.reconnectTimeout = null;
       }
 
+      if(node.scanTimeout){
+        clearTimeout(node.scanTimeout);
+        node.scanTimeout = null;
+      }
+
       if (node.client) {
         node.client.close(function (err) {
           if(err) node.error("Error while closing client: "+err.message)
           else node.warn('Connection closed')
-          node.emit('mbclosed');
+          node.emit('mbClosed');
           done()
         });
       }else
-        node.emit('mbclosed');
+        node.emit('mbClosed');
         done()
     });
-
-    //start connection
-    node.connect(node.onConnect);
   }
 
   RED.nodes.registerType('mbus-client', MbusClientNode)

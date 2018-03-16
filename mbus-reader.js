@@ -41,13 +41,18 @@ module.exports = function (RED) {
       setStatus('Reconnecting', 'warning')
     }
 
-    client.on('mbconnected', node.onConnect)
-    client.on('mberror', node.onError)
-    client.on('mbclosed', node.onClose)
-    client.on('mbscan', node.onScan)
-    client.on('mbscanComplete', node.onScanComplete)
-    client.on('mbdeviceUpdated', node.onDeviceUpdated)
-    client.on('mbreconnect', node.onReconnect)
+    if(client){
+
+      client.on('mbConnected', node.onConnect)
+      client.on('mbError', node.onError)
+      client.on('mbClosed', node.onClose)
+      client.on('mbScan', node.onScan)
+      client.on('mbScanComplete', node.onScanComplete)
+      client.on('mbDeviceUpdated', node.onDeviceUpdated)
+      client.on('mbReconnect', node.onReconnect)
+
+      client.connect();
+    }
 
     node.on('input', function (msg) {
       if (!client) {
