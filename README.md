@@ -5,14 +5,12 @@
 [![NPM version](http://img.shields.io/npm/v/node-red-contrib-m-bus.svg)](https://www.npmjs.com/package/node-red-contrib-m-bus)
 [![Downloads](https://img.shields.io/npm/dm/node-red-contrib-m-bus.svg)](https://www.npmjs.com/package/node-red-contrib-m-bus)
 
-
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
 [![MIT Licence](https://badges.frapsoft.com/os/mit/mit.png?v=103)](https://opensource.org/licenses/mit-license.php)
 
-
 [![NPM](https://nodei.co/npm/node-red-contrib-m-bus.png?downloads=true)](https://nodei.co/npm/node-red-contrib-m-bus/)
 
-### Decription
+# Decription
 
 Node-Red node that uses [node-mbus](https://github.com/Apollon77/node-mbus) to communicate with mbus devices via serial or TCP connections.
 
@@ -28,7 +26,7 @@ Run the following command in the root directory of your Node-RED install
 
 This package will add a new set of nodes in your node palette:
 
-#### mbus-client
+### mbus-client
 
 Configuration node that stores the M-Bus client connection informations that can be used from other nodes. Once a client is inited it will try to open the connection, if it fails it keeps retry. Once the connection is opened it scans the M-Bus network (via secondary IDs) to find all connected devices. Once the scan is done (**it can takes many minutes, it depends on the number of total meters in the network**) it will emit the event `mbScanComplete` with the array of secondary IDs found:
 
@@ -133,9 +131,8 @@ Other **mbus-client** events are:
 * *mbRestarted*: when the client is restarted
 * *mbScan*: when the scan starts
 
- it start reading all devices found one by one and keeps information
 
-#### mbus-reader
+### mbus-reader
 
 This node will subscribe to a M-Bus client events and will output messages on `mbScanComplete` and `mbDeviceUpdated` events with data in the payload and event name in `msg.topic` property
 
