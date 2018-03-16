@@ -1,26 +1,26 @@
 
 <script type="text/javascript">
-  RED.nodes.registerType('mbus-reader', {
+  RED.nodes.registerType('mbus-out', {
     category: 'M Bus',
     color: '#03A9F4',
     defaults: {
       name: {value: ''},
       client: {type: 'mbus-client', required: true},
     },
-    inputs: 1,
+    inputs: 0,
     outputs: 1,
     align: "left",
     icon: 'bridge.png',
-    paletteLabel: 'M-Bus Reader',
+    paletteLabel: 'M-Bus Out',
     label: function () {
-      return this.name || 'M-Bus Reader'
+      return this.name || 'M-Bus Out'
     },
     oneditprepare: function () {
     }
   })
 </script>
 
-<script type="text/x-red" data-template-name="mbus-reader">
+<script type="text/x-red" data-template-name="mbus-out">
     <div class="form-row">
         <label for="node-input-client"><i class="icon-globe"></i> <span data-i18n="mbus.label.client"></span></label>
         <input type="text" id="node-input-client">
@@ -32,7 +32,7 @@
 </script>
 
 
-<script type="text/x-red" data-help-name="mbus-reader">
+<script type="text/x-red" data-help-name="mbus-out">
 <p>Subscribes to a M-Bus client events and publishes updates to output.</p>
 
 <h3>Outputs</h3>
@@ -53,9 +53,9 @@
 
 <code>msg.topic</code> contains the event name. Used topics are are:
 <ul>
-    <li>'scanComplete' - When the scan is completed, <code>msg.payload</code>
+    <li><b>scanComplete</b> - When the scan is completed, <code>msg.payload</code>
     will contains an array of <code>string</code> with found devices secondary IDs</li>
-    <li>'deviceUpdated' - When the a device is updated, <code>msg.payload</code>
+    <li><b>deviceUpdated</b> - When the a device is updated, <code>msg.payload</code>
     will contains an <code>Object</code> with the device data</li>
 </ul>
 
