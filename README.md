@@ -1,6 +1,5 @@
-![Logo](images/mbus.png)
 # node-red-contrib-m-bus
-======================
+![Logo](images/mbus.png)
 
 [![NPM version](http://img.shields.io/npm/v/node-red-contrib-m-bus.svg)](https://www.npmjs.com/package/node-red-contrib-m-bus)
 [![Downloads](https://img.shields.io/npm/dm/node-red-contrib-m-bus.svg)](https://www.npmjs.com/package/node-red-contrib-m-bus)
@@ -28,7 +27,7 @@ This package will add a new set of nodes in your node palette:
 
 ### mbus-client
 
-Configuration node that stores the M-Bus client connection informations that can be used from other nodes. Once a client is inited it will try to open the connection, if it fails it keeps retry. Once the connection is opened it scans the M-Bus network (via secondary IDs) to find all connected devices. Once the scan is done (**it can takes many minutes, it depends on the number of total meters in the network**) it will emit the event `mbScanComplete` with the array of secondary IDs found:
+Configuration node that stores the M-Bus client connection informations that can be used from other nodes. Once a client is inited it will try to open the connection, if it fails it keeps retry. Once the connection is opened it scans the M-Bus network (via secondary IDs) to find all connected devices. Once the scan is done (**it can takes many minutes, depends on the number of total meters in the network**) it will emit the event `mbScanComplete` with the array of secondary IDs found:
 
 ```javascript
 ['11490378', '11865378', '11497492']
@@ -132,9 +131,9 @@ Other **mbus-client** events are:
 * *mbScan*: when the scan starts
 
 
-### mbus-reader
+### mbus-out
 
-This node will subscribe to a M-Bus client events and will output messages on `mbScanComplete` and `mbDeviceUpdated` events with data in the payload and event name in `msg.topic` property
+This node will subscribe to a M-Bus client events and will output messages on `mbScanComplete` and `mbDeviceUpdated` events with data in `msg.payload` and the event name in `msg.topic`.
 
 
 # Authors

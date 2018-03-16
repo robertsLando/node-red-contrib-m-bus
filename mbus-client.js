@@ -2,6 +2,16 @@
 module.exports = function (RED) {
   'use strict'
 
+  var clientEvents = {
+   'mbError': 'error',
+   'mbClose': 'warn',
+   'mbConnect': 'log',
+   'mbReconnect': 'log',
+   'mbScan': 'log',
+   'mbScanComplete': 'log',
+   'mbDeviceUpdated': 'log'
+ };
+
   function MbusClientNode (config) {
     RED.nodes.createNode(this, config)
 
@@ -25,51 +35,49 @@ module.exports = function (RED) {
     node.scanTimeout = null
     node.lastStatus = null;
     node.started = false;
+    node.lastStatus = null;
 
-    node.onConnect = function(err){
+    function onConnect(err){
       if(err){
-        node.emit('mbError', err.message);
-        node.error('Error while connecting', err.message);
-        node.restartConnection()
+        emitEvent('mbError', {data: err.message, message: 'Error while connecting ' + err.message});
+        restartConnection()
       }
       else{
-        node.warn('Connected, scanning started...');
-        node.scanTimeout = setTimeout(node.scanSecondary, 1000);
+        emitEvent('mbConnect', {message: 'Connected'});
+        //node.scanTimeout = setTimeout(node.scanSecondary, 1000);
       }
     }
 
     node.scanSecondary = function(){
-      node.emit('mbScan');
+      emitEvent('mbScan', {message: 'Scan started...'});
+
       try {
 
         node.client.scanSecondary(function(err, data) {
           if(err){
-            node.emit('mbError', err.message);
-            node.error('Error while scanning', err.message);
-            node.restartConnection()
+            emitEvent('mbError', {data:err.message, message: 'Error while scanning ' + err.message});
+            restartConnection()
           }
           else{
             node.devices = data;
             node.errors = {};
             node.data = {};
             node.lastUpdated = 0;
-            node.emit('mbScanComplete', data);
+            emitEvent('mbScanComplete', {data:data});
             updateDevices();
           }
         });
 
       } catch (e) {
-        node.emit('mbError', e.message);
-        node.error('Error while scanning', e.message);
-        node.restartConnection()
+        emitEvent('mbError', {data: e.message, message: 'Error while scanning ' + e.message});
+        restartConnection()
       }
     }
 
     function updateDevices(){
       if(!node.devices || node.devices.length == 0)
       {
-        node.emit('mbError', "No devices found update");
-        node.error('No devices to update');
+        emitEvent('mbError', {data: "No device to update", message: 'No device to update'});
         return;
       }
 
@@ -78,28 +86,37 @@ module.exports = function (RED) {
 
       var addr = node.devices[node.lastUpdated];
 
-      node.client.getData(addr, function(err, data){
-        if (err) {
-            node.emit('mbError', err.message);
+      try{
+        node.client.getData(addr, function(err, data){
+          if (err) {
+            emitEvent('mbError', {data: err.message, message: 'Error while reading device ' + addr + ' ' + err.message});
             node.errors[addr] = true;
-            node.error('Error while reading device', addr);
-            //adapter.log.error('M-Bus Devices ' + Object.keys(errorDevices).length + ' errored from ' + Object.keys(mBusDevices).length);
+
+            //all devices have an error
             if (Object.keys(node.errors).length === node.devices.length) {
-                node.restartConnection()
+              restartConnection()
             }
-        }else{
-          node.lastUpdated++;
-          node.data[addr] = data;
-          node.emit('mbDeviceUpdated', data);
-          updateDevices();
-        }
-      })
+
+          }else{
+            //remove error device
+            if(node.errors[addr])
+              delete node.errors[addr];
+
+            node.lastUpdated++;
+            node.data[addr] = data;
+            emitEvent('mbDeviceUpdated', {data:data});
+            updateDevices();
+          }
+        })
+      } catch (e) {
+        emitEvent('mbError', {data: e.message, message: 'Error while reading device ' + addr + ' ' + e.message});
+        restartConnection()
+      }
     }
 
-    node.restartConnection = function(err){
+    function restartConnection(err){
 
-      node.emit('mbReconnect')
-      node.warn('Restarting client')
+      emitEvent('mbReconnect', { message: 'Restarting client' })
 
       node.reconnectTimeout = setTimeout(function(){
       if(node.client){
@@ -112,14 +129,28 @@ module.exports = function (RED) {
       }, RECONNECT_TIMEOUT);
     }
 
+    function emitEvent(event, data){
+      var logEvent = clientEvents[event];
+      if(logEvent){
+
+        node.lastStatus = {event: event, data: data};
+        data && data.data ? node.emit(event, data.data) : node.emit(event);
+
+        if(data && data.message)
+          node[logEvent](data.message);
+      }
+    }
+
+    node.getStatus = function(){
+      return node.lastStatus;
+    }
+
     node.connect = function(reconnecting){
 
       if(node.started && !reconnecting)
         return;
 
       node.started = true;
-
-      node.warn('Opening connection...')
 
       var mbusOptions = {autoConenct: this.autoConenct};
 
@@ -132,7 +163,7 @@ module.exports = function (RED) {
       }
 
       node.client = new MbusMaster(mbusOptions);
-      node.client.connect(node.onConnect);
+      node.client.connect(onConnect);
     }
 
     node.on('close', function (done) {
@@ -141,6 +172,7 @@ module.exports = function (RED) {
       node.data = {};
       node.lastUpdated = 0;
       node.started = false;
+      node.lastStatus = null;
 
       if(node.reconnectTimeout){
         clearTimeout(node.reconnectTimeout);
@@ -153,15 +185,22 @@ module.exports = function (RED) {
       }
 
       if (node.client) {
-        node.client.close(function (err) {
-          if(err) node.error("Error while closing client: "+err.message)
-          else node.warn('Connection closed')
-          node.emit('mbClosed');
+        try {
+          node.client.close(function (err) {
+            if(err) node.error("Error while closing client: "+err.message)
+
+            emitEvent('mbClosed', {message: 'Connection closed'});
+            done()
+          });
+        } catch (e) {
+          node.error("Error while closing client: "+e.message)
+          emitEvent('mbClosed', {message: 'Connection closed'});
           done()
-        });
+        }
       }else
-        node.emit('mbClosed');
-        done()
+        emitEvent('mbClosed', {message: 'Connection closed'});
+
+      done()
     });
   }
 

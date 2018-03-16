@@ -2,6 +2,7 @@
 module.exports = function (RED) {
   'use strict'
 
+
   function MbusOut (config) {
     RED.nodes.createNode(this, config)
 
@@ -10,89 +11,105 @@ module.exports = function (RED) {
     let client = RED.nodes.getNode(config.client)
     let node = this
 
+    //----- EVENTS HANDLERS ----------------------------------------------------
 
-    node.onConnect = function () {
+    var subscribedEvents = {
+     'mbError': onError,
+     'mbClose': onClose,
+     'mbConnect': onConnect,
+     'mbReconnect': onReconnect,
+     'mbScan': onScan,
+     'mbScanComplete': onScanComplete,
+     'mbDeviceUpdated': onDeviceUpdated
+   };
+
+
+    function onConnect(){
       setStatus('Connected', 'success')
     }
 
-    node.onError = function (failureMsg) {
+    function onError(failureMsg) {
       setStatus("Error: " + failureMsg, 'error');
     }
 
-    node.onClose = function () {
+    function onClose(){
       setStatus('Closed', 'error')
     }
 
-    node.onScan = function () {
+    function onScan() {
       setStatus("Scanning devices...", 'info')
     }
 
-    node.onScanComplete = function (devices) {
+    function onScanComplete(devices){
       setStatus("Scan complete, " + devices.length + " devices found", 'success')
       node.send({topic: "mbScanComplete", payload: devices});
     }
 
-    node.onDeviceUpdated = function (device) {
+    function onDeviceUpdated(device) {
       setStatus("Device " + device.SlaveInformation.Id + " updated", 'success')
       node.send({topic: "mbDeviceUpdated", payload: device});
     }
 
-    node.onReconnect = function () {
+    function onReconnect() {
       setStatus('Reconnecting', 'warning')
     }
 
+    //----- SUBSCRIBE TO CLIENT EVENTS -----------------------------------------
+
     if(client){
 
-      client.on('mbConnected', node.onConnect)
-      client.on('mbError', node.onError)
-      client.on('mbClosed', node.onClose)
-      client.on('mbScan', node.onScan)
-      client.on('mbScanComplete', node.onScanComplete)
-      client.on('mbDeviceUpdated', node.onDeviceUpdated)
-      client.on('mbReconnect', node.onReconnect)
+      //update status
+      if(client.getStatus())
+        subscribedEvents[client.getStatus().event]();
+
+      Object.keys(subscribedEvents).forEach(function(evt) {
+          client.on(evt, subscribedEvents[evt]);
+      });
 
       client.connect();
     }
 
-    // node.on('input', function (msg) {
-    //   if (!client) {
-    //     return
-    //   }
-    //
-    //   if (msg.payload) {
-    //     try {
-    //       if (typeof msg.payload === 'string') {
-    //         msg.payload = JSON.parse(msg.payload)
-    //       }
-    //
-    //       switch (msg.topic) {
-    //         case 'scan':
-    //
-    //         break;
-    //         case 'read':
-    //         msg.payload.address = parseInt(msg.payload.address) || 0
-    //
-    //         if (!(Number.isInteger(msg.payload.address) &&
-    //         msg.payload.address >= 0 &&
-    //         msg.payload.address <= 250)) {
-    //           node.error('Address Not Valid', msg)
-    //           return
-    //         }
-    //
-    //         break;
-    //         default:
-    //         node.error('Topic Not Valid, must be "read" or "scan"', msg)
-    //       }
-    //
-    //     } catch (err) {
-    //       node.error(err, msg)
-    //     }
-    //
-    //   } else {
-    //     node.error('Payload Not Valid', msg)
-    //   }
-    // })
+    node.on('input', function (msg) {
+      if (!client) {
+        return
+      }
 
+      if (msg.payload) {
+        try {
+          if (typeof msg.payload === 'string') {
+            msg.payload = JSON.parse(msg.payload)
+          }
+
+          switch (msg.topic) {
+            case 'scan':
+            if(client)  client.scanSecondary();
+
+            break;
+            case 'read':
+            msg.payload.address = parseInt(msg.payload.address) || 0
+
+            if (!(Number.isInteger(msg.payload.address) &&
+            msg.payload.address >= 0 &&
+            msg.payload.address <= 250)) {
+              node.error('Address Not Valid', msg)
+              return
+            }
+
+            break;
+            default:
+            node.error('Topic Not Valid, must be "read" or "scan"', msg)
+          }
+
+        } catch (err) {
+          node.error(err, msg)
+        }
+
+      } else {
+        node.error('Payload Not Valid', msg)
+      }
+    })
+
+    //Set node status
     function setStatus (message, type) {
       let types = {info: 'blue', error: 'red', warning: 'yellow', success: 'green'};
 
