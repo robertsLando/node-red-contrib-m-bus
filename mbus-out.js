@@ -55,59 +55,60 @@ module.exports = function (RED) {
     }
 
     //----- SUBSCRIBE TO CLIENT EVENTS -----------------------------------------
-
     if(client){
 
       //update status
       if(client.getStatus())
         subscribedEvents[client.getStatus().event]();
+      else
+        onClose();
 
       Object.keys(subscribedEvents).forEach(function(evt) {
           client.on(evt, subscribedEvents[evt]);
       });
 
-      client.connect();
+      setTimeout(client.connect(), 10000);
     }
 
-    node.on('input', function (msg) {
-      if (!client) {
-        return
-      }
-
-      if (msg.payload) {
-        try {
-          if (typeof msg.payload === 'string') {
-            msg.payload = JSON.parse(msg.payload)
-          }
-
-          switch (msg.topic) {
-            case 'scan':
-            if(client)  client.scanSecondary();
-
-            break;
-            case 'read':
-            msg.payload.address = parseInt(msg.payload.address) || 0
-
-            if (!(Number.isInteger(msg.payload.address) &&
-            msg.payload.address >= 0 &&
-            msg.payload.address <= 250)) {
-              node.error('Address Not Valid', msg)
-              return
-            }
-
-            break;
-            default:
-            node.error('Topic Not Valid, must be "read" or "scan"', msg)
-          }
-
-        } catch (err) {
-          node.error(err, msg)
-        }
-
-      } else {
-        node.error('Payload Not Valid', msg)
-      }
-    })
+    // node.on('input', function (msg) {
+    //   if (!client) {
+    //     return
+    //   }
+    //
+    //   if (msg.payload) {
+    //     try {
+    //       if (typeof msg.payload === 'string') {
+    //         msg.payload = JSON.parse(msg.payload)
+    //       }
+    //
+    //       switch (msg.topic) {
+    //         case 'scan':
+    //         if(client)  client.scanSecondary();
+    //
+    //         break;
+    //         case 'read':
+    //         msg.payload.address = parseInt(msg.payload.address) || 0
+    //
+    //         if (!(Number.isInteger(msg.payload.address) &&
+    //         msg.payload.address >= 0 &&
+    //         msg.payload.address <= 250)) {
+    //           node.error('Address Not Valid', msg)
+    //           return
+    //         }
+    //
+    //         break;
+    //         default:
+    //         node.error('Topic Not Valid, must be "read" or "scan"', msg)
+    //       }
+    //
+    //     } catch (err) {
+    //       node.error(err, msg)
+    //     }
+    //
+    //   } else {
+    //     node.error('Payload Not Valid', msg)
+    //   }
+    // })
 
     //Set node status
     function setStatus (message, type) {

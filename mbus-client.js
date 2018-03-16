@@ -44,7 +44,7 @@ module.exports = function (RED) {
       }
       else{
         emitEvent('mbConnect', {message: 'Connected'});
-        //node.scanTimeout = setTimeout(node.scanSecondary, 1000);
+        node.scanTimeout = setTimeout(node.scanSecondary, 1000);
       }
     }
 
