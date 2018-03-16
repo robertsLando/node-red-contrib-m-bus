@@ -29,12 +29,12 @@ module.exports = function (RED) {
 
     node.onScanComplete = function (devices) {
       setStatus("Scan complete, " + devices.length + " devices found", 'success')
-      node.send({payload: devices});
+      node.send({topic: "mbScanComplete", payload: devices});
     }
 
     node.onDeviceUpdated = function (device) {
       setStatus("Device " + device.SlaveInformation.Id + " updated", 'success')
-      node.send({payload: device});
+      node.send({topic: "mbDeviceUpdated", payload: device});
     }
 
     node.onReconnect = function () {

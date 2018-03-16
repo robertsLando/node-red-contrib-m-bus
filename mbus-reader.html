@@ -33,5 +33,39 @@
 
 
 <script type="text/x-red" data-help-name="mbus-reader">
-      <p>The M-Bus Reader</p>
+<p>Subscribes to a M-Bus client events and publishes updates to output.</p>
+
+<h3>Outputs</h3>
+<ol class="node-ports">
+   <li>Output
+       <dl class="message-properties">
+           <dt>payload <span class="property-type">Json</span></dt>
+           <dd>The data of the event.</dd>
+       </dl>
+       <dl class="message-properties">
+           <dt>topic <span class="property-type">String</span></dt>
+           <dd>Event name.</dd>
+       </dl>
+   </li>
+</ol>
+
+<h3>Output</h3>
+
+<code>msg.topic</code> contains the event name. Used topics are are:
+<ul>
+    <li>'scanComplete' - When the scan is completed, <code>msg.payload</code>
+    will contains an array of <code>string</code> with found devices secondary IDs</li>
+    <li>'deviceUpdated' - When the a device is updated, <code>msg.payload</code>
+    will contains an <code>Object</code> with the device data</li>
+</ul>
+
+<p>For more info about the payload of messages check
+<a href="https://github.com/robertsLando/node-red-contrib-m-bus#nodes">Nodes</a> section</p>
+
+
+<h3>References</h3>
+  <ul>
+      <li><a href="https://github.com/robertsLando/node-red-contrib-m-bus">GitHub</a> - the node github repository</li>
+  </ul>
+
 </script>

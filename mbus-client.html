@@ -160,6 +160,20 @@
 
 <script type="text/x-red" data-help-name="mbus-client">
 
-    <p>The M-Bus Client</p>
+<p>Configuration node that connects to a TCP/Serial M-Bus client.</p>
+
+<h3>Details</h3>
+Initializes the MBusMaster instance to interact with the devices.
+
+<h3>Parameters</h3>
+  <ul>
+    <li>host/port: For TCP communication you set the host and the port to connect to. Both parameters are mandatory</li>
+    <li>serialPort/serialBaudRate: For Serial communication you set the serialPort (e.g. /dev/ttyUSB0) and optionally the serialBaudRate to connect. Default Baudrate is 2400baut if option is missing</li>
+    <li>autoConnect: set to "true" if connection should be established automatically when needed</li>
+  </ul>
+<h3>References</h3>
+  <ul>
+      <li><a href="https://github.com/robertsLando/node-red-contrib-m-bus">GitHub</a> - the node github repository</li>
+  </ul>
 
 </script>
