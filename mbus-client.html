@@ -12,7 +12,8 @@
       serialPort: {required: true},
       serialBaudrate: {value: 2400, required: true, validate: RED.validators.number()},
 
-      autoConnect: {value: true, required: true},
+      reconnectTimeout: {value: 10000, required: true, validate: RED.validators.number()},
+      storeDevices: {value: true},
     },
     label: function () {
       let node = this
@@ -151,10 +152,14 @@
         </div>
     </div>
 	<hr>
-    <div class="form-row">
-        <label for="node-config-input-autoConnect"><span data-i18n="mbus.label.autoConnect"></span></label>
-        <input type="checkbox" id="node-config-input-autoConnect">
-    </div>
+  <div class="form-row">
+      <label for="node-config-input-reconnectTimeout"><i class="icon-time"></i> <span data-i18n="mbus.label.reconnectTimeout"></span></label>
+      <input type="text" id="node-config-input-reconnectTimeout" placeholder="10000">
+  </div>
+  <div class="form-row">
+      <label for="node-config-input-storeDevices"><i class="icon-save"></i> <span data-i18n="mbus.label.storeDevices"></span></label>
+      <input type="checkbox" id="node-config-input-storeDevices">
+  </div>
 
 </script>
 
@@ -168,8 +173,9 @@ Initializes the MBusMaster instance to interact with the devices.
 <h3>Parameters</h3>
   <ul>
     <li><b>host/port</b>: For TCP communication you set the host and the port to connect to. Both parameters are mandatory</li>
-    <li><b>serialPort/serialBaudRate</b>: For Serial communication you set the serialPort (e.g. /dev/ttyUSB0) and the serialBaudRate to connect. Default Baudrate is 2400baut if option is missing</li>
-    <li><b>autoConnect</b>: set to <code>true</code> if connection should be established automatically when needed</li>
+    <li><b>serialPort/serialBaudRate</b>: For Serial communication you set the serialPort (e.g. /dev/ttyUSB0) and the serialBaudRate to connect. Default Baudrate is 2400 baut if option is missing</li>
+    <li><b>Reconnect timoeut</b>: Milliseconds to wait between two reconnection tries</li>
+    <li><b>Store devices</b>: If true the node, once connected, will check for existing file <code>mbus_devices.json</code> in <code>.node-red</code> directory, if it doesn't exist it will do the scan and create one with found devices</li>
   </ul>
 <h3>References</h3>
   <ul>

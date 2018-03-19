@@ -54,9 +54,11 @@
 <code>msg.topic</code> contains the event name. Used topics are are:
 <ul>
     <li><b>scanComplete</b> - When the scan is completed, <code>msg.payload</code>
-    will contains an array of <code>string</code> with found devices secondary IDs</li>
+    will contains an array of <code>string</code> with secondary IDs of found devices</li>
     <li><b>deviceUpdated</b> - When the a device is updated, <code>msg.payload</code>
-    will contains an <code>Object</code> with the device data</li>
+    will contains an <code>Object</code> with device data</li>
+    <li><b>devicesLoaded</b> - When the client has `storeDevices` option set to <code>true</code> this event is triggered once the Array of devices is loaded, <code>msg.payload</code>
+    will contains an <code>Array</code> of Devices found</li>
 </ul>
 
 <p>For more info about the payload of messages check

@@ -20,7 +20,8 @@ module.exports = function (RED) {
      'mbReconnect': onReconnect,
      'mbScan': onScan,
      'mbScanComplete': onScanComplete,
-     'mbDeviceUpdated': onDeviceUpdated
+     'mbDeviceUpdated': onDeviceUpdated,
+     'mbDevicesLoaded': onDevicesLoaded
    };
 
 
@@ -50,6 +51,11 @@ module.exports = function (RED) {
       node.send({topic: "mbDeviceUpdated", payload: device});
     }
 
+    function onDevicesLoaded(devices) {
+      setStatus(devices.length + " devices loaded from file", 'success')
+      node.send({topic: "mbDevicesLoaded", payload: devices});
+    }
+
     function onReconnect() {
       setStatus('Reconnecting', 'warning')
     }
@@ -58,16 +64,12 @@ module.exports = function (RED) {
     if(client){
 
       //update status
-      if(client.getStatus())
-        subscribedEvents[client.getStatus().event]();
-      else
-        onClose();
+      subscribedEvents[client.getStatus().event]();
 
       Object.keys(subscribedEvents).forEach(function(evt) {
           client.on(evt, subscribedEvents[evt]);
       });
 
-      setTimeout(client.connect(), 10000);
     }
 
     // node.on('input', function (msg) {

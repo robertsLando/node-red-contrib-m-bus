@@ -9,33 +9,56 @@ module.exports = function (RED) {
    'mbReconnect': 'log',
    'mbScan': 'log',
    'mbScanComplete': 'log',
-   'mbDeviceUpdated': 'log'
+   'mbDeviceUpdated': 'log',
+   'mbDevicesLoaded': 'log'
  };
 
   function MbusClientNode (config) {
     RED.nodes.createNode(this, config)
 
     let MbusMaster = require('node-mbus')
-    let RECONNECT_TIMEOUT = 5000;
-
-    this.clienttype = config.clienttype
-    this.tcpHost = config.tcpHost
-    this.tcpPort = parseInt(config.tcpPort) || 500
-
-    this.serialPort = config.serialPort
-    this.serialBaudrate = config.serialBaudrate
-
-    this.autoConnect = !!config.autoConnect
-
+    let jsonfile = require('jsonfile')
+    let DEVICES_FILE = 'mbus_devices.json'
+    let DELAY_TIMEOUT = 3000;
     let node = this
 
-    node.client = null
-    node.devices = {}
-    node.reconnectTimeout = null
-    node.scanTimeout = null
-    node.lastStatus = null;
-    node.started = false;
-    node.lastStatus = null;
+    //POLYFILL
+    if (!Array.isArray) {
+      Array.isArray = function(arg) {
+        return Object.prototype.toString.call(arg) === '[object Array]';
+      };
+    }
+
+    //----- NODE CONFIGURATION VARS --------------------------------------------
+
+    var RECONNECT_TIMEOUT = parseInt(config.reconnectTimeout) || 5000;
+
+    node.clienttype = config.clienttype
+
+    node.tcpHost = config.tcpHost
+    node.tcpPort = parseInt(config.tcpPort) || 2000
+
+    node.serialPort = config.serialPort
+    node.serialBaudrate = config.serialBaudrate
+
+    node.storeDevices = config.storeDevices;
+
+    //----- PRIVATE VARS -------------------------------------------------------
+
+    var client = null
+    var reconnectTimeout = null
+    var delayTimeout = null
+    var lastStatus = null;
+    var started = false;
+    var lastStatus = null;
+
+    //data
+    var devices = []
+    var errors = {};
+    var data = {};
+    var lastUpdated = 0;
+
+    //----- PRIVATE FUNCTIONS --------------------------------------------------
 
     function onConnect(err){
       if(err){
@@ -44,26 +67,153 @@ module.exports = function (RED) {
       }
       else{
         emitEvent('mbConnect', {message: 'Connected'});
-        node.scanTimeout = setTimeout(node.scanSecondary, 1000);
+
+        if(node.storeDevices)
+          loadDevices(true);
+        else
+          delayFunction(node.scanSecondary);
       }
     }
+
+    //store new devices configuration
+    function storeDevices(){
+      jsonfile.writeFile(DEVICES_FILE, devices, function(err) {
+        if(err)
+          emitEvent('mbError', {data: err.message, message: 'Error while writing devices file ' + err.message});
+      })
+    }
+
+    //load devices from file
+    function loadDevices(scanIfFail){
+      jsonfile.readFile(DEVICES_FILE, function(err, data) {
+        if(err)
+          emitEvent('mbError', {data: err.message, message: 'Error while reading devices file ' + err.message});
+
+        if(isValidArray(data)){
+          emitEvent('mbDevicesLoaded', {data:data});
+          devices = data;
+          delayFunction(updateDevices);
+        }else if(scanIfFail){
+          delayFunction(node.scanSecondary);
+        }
+      })
+    }
+
+    //Delay a function
+    function delayFunction(fun){
+      delayTimeout = setTimeout(fun, DELAY_TIMEOUT)
+    }
+
+    //Check devices array is valid (just contains numbers or strings)
+    function isValidArray(data){
+      if(!Array.isArray(data)){
+        return false;
+      }
+
+      for (var i = 0; i < data.length; i++) {
+        if(typeof data[i] != 'string' && typeof data[i] != 'number')
+          return false;
+      }
+
+      return true;
+    }
+
+    //read devices
+    function updateDevices(){
+
+      if(!devices || devices.length == 0)
+      {
+        emitEvent('mbError', {data: "No device to update", message: 'No device to update'});
+        return;
+      }
+
+      //all devices read, restart from 0
+      if(lastUpdated >= devices.length)
+        lastUpdated = 0;
+
+      var addr = devices[lastUpdated];
+
+      try{
+
+        client.getData(addr, function(err, data){
+          if (err) {
+            emitEvent('mbError', {data: err.message, message: 'Error while reading device ' + addr + ' ' + err.message});
+
+            errors[addr] = true;
+
+            //all devices have an error
+            if (Object.keys(errors).length === devices.length) {
+              restartConnection()
+            }
+
+          }else{ //no error
+
+            //remove error device
+            if(errors[addr])
+              delete errors[addr];
+
+            //move index to next
+            lastUpdated++;
+            data[addr] = data;
+            emitEvent('mbDeviceUpdated', {data:data});
+            updateDevices();
+          }
+        });
+
+      } catch (e) {
+        emitEvent('mbError', {data: e.message, message: 'Error while reading device ' + addr + ' ' + e.message});
+        restartConnection()
+      }
+    }
+
+    function restartConnection(){
+
+      emitEvent('mbReconnect', { message: 'Restarting client' })
+
+      reconnectTimeout = setTimeout(function(){
+      if(client){
+        client.close(function(err){
+          if(err) node.error("Error while closing connection", err.message);
+          node.connect(true);
+        })
+      }else
+        node.connect(true);
+      }, RECONNECT_TIMEOUT);
+    }
+
+    //emit an event with data and log it if it contains a message
+    function emitEvent(event, data){
+      var logEvent = clientEvents[event];
+      if(logEvent){
+
+        lastStatus = {event: event, data: data};
+        data && data.data ? node.emit(event, data.data) : node.emit(event);
+
+        if(data && data.message)
+          node[logEvent](data.message);
+      }
+    }
+
+    //----- PUBLIC FUNCTIONS ---------------------------------------------------
 
     node.scanSecondary = function(){
       emitEvent('mbScan', {message: 'Scan started...'});
 
       try {
 
-        node.client.scanSecondary(function(err, data) {
+        client.scanSecondary(function(err, data) {
           if(err){
             emitEvent('mbError', {data:err.message, message: 'Error while scanning ' + err.message});
             restartConnection()
           }
           else{
-            node.devices = data;
-            node.errors = {};
-            node.data = {};
-            node.lastUpdated = 0;
+            devices = data;
+
+            if(node.storeDevices)
+              storeDevices();
+
             emitEvent('mbScanComplete', {data:data});
+
             updateDevices();
           }
         });
@@ -74,87 +224,22 @@ module.exports = function (RED) {
       }
     }
 
-    function updateDevices(){
-      if(!node.devices || node.devices.length == 0)
-      {
-        emitEvent('mbError', {data: "No device to update", message: 'No device to update'});
-        return;
-      }
-
-      if(node.lastUpdated >= node.devices.length)
-        node.lastUpdated = 0;
-
-      var addr = node.devices[node.lastUpdated];
-
-      try{
-        node.client.getData(addr, function(err, data){
-          if (err) {
-            emitEvent('mbError', {data: err.message, message: 'Error while reading device ' + addr + ' ' + err.message});
-            node.errors[addr] = true;
-
-            //all devices have an error
-            if (Object.keys(node.errors).length === node.devices.length) {
-              restartConnection()
-            }
-
-          }else{
-            //remove error device
-            if(node.errors[addr])
-              delete node.errors[addr];
-
-            node.lastUpdated++;
-            node.data[addr] = data;
-            emitEvent('mbDeviceUpdated', {data:data});
-            updateDevices();
-          }
-        })
-      } catch (e) {
-        emitEvent('mbError', {data: e.message, message: 'Error while reading device ' + addr + ' ' + e.message});
-        restartConnection()
-      }
-    }
-
-    function restartConnection(err){
-
-      emitEvent('mbReconnect', { message: 'Restarting client' })
-
-      node.reconnectTimeout = setTimeout(function(){
-      if(node.client){
-        node.client.close(function(err){
-          if(err) node.error("Error while closing connection", err.message);
-          node.connect(true);
-        })
-      }else
-        node.connect(true);
-      }, RECONNECT_TIMEOUT);
-    }
-
-    function emitEvent(event, data){
-      var logEvent = clientEvents[event];
-      if(logEvent){
-
-        node.lastStatus = {event: event, data: data};
-        data && data.data ? node.emit(event, data.data) : node.emit(event);
-
-        if(data && data.message)
-          node[logEvent](data.message);
-      }
-    }
-
+    //get currently status or 'closed'
     node.getStatus = function(){
-      return node.lastStatus;
+      return lastStatus || {event: 'mbClose'};
     }
 
+    //connect the client
     node.connect = function(reconnecting){
 
-      if(node.started && !reconnecting)
+      if(started && !reconnecting)
         return;
 
-      node.started = true;
+      started = true;
 
-      var mbusOptions = {autoConenct: this.autoConenct};
+      var mbusOptions = {autoConnect: false};
 
-      if (node.clienttype === 'tcp') {
+      if (this.clienttype === 'tcp') {
         mbusOptions.host = this.tcpHost;
         mbusOptions.port = this.tcpPort;
       }else {
@@ -162,38 +247,48 @@ module.exports = function (RED) {
         mbusOptions.serialBaudrate = this.serialBaudrate;
       }
 
-      node.client = new MbusMaster(mbusOptions);
-      node.client.connect(onConnect);
+      client = new MbusMaster(mbusOptions);
+      client.connect(onConnect);
     }
 
+    //----- NODE EVENTS --------------------------------------------------
+
+    //triggered when node is removed or project is redeployed
     node.on('close', function (done) {
-      node.devices = {};
-      node.errors = {};
-      node.data = {};
-      node.lastUpdated = 0;
-      node.started = false;
-      node.lastStatus = null;
 
-      if(node.reconnectTimeout){
-        clearTimeout(node.reconnectTimeout);
-        node.reconnectTimeout = null;
+      //init private vars
+
+      devices = [];
+      errors = {};
+      data = {};
+      lastUpdated = 0;
+      started = false;
+      lastStatus = null;
+
+      //stop running timeouts
+
+      if(reconnectTimeout){
+        clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
       }
 
-      if(node.scanTimeout){
-        clearTimeout(node.scanTimeout);
-        node.scanTimeout = null;
+      if(delayTimeout){
+        clearTimeout(delayTimeout);
+        delayTimeout = null;
       }
 
-      if (node.client) {
+      //close client
+
+      if (client) {
         try {
-          node.client.close(function (err) {
-            if(err) node.error("Error while closing client: "+err.message)
+          client.close(function (err) {
+            if(err) node.error("Error while closing client: " + err.message)
 
             emitEvent('mbClosed', {message: 'Connection closed'});
             done()
           });
         } catch (e) {
-          node.error("Error while closing client: "+e.message)
+          node.error("Error while closing client: " + e.message)
           emitEvent('mbClosed', {message: 'Connection closed'});
           done()
         }
@@ -202,6 +297,8 @@ module.exports = function (RED) {
 
       done()
     });
+
+    node.connect();
   }
 
   RED.nodes.registerType('mbus-client', MbusClientNode)

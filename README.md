@@ -27,7 +27,7 @@ This package will add a new set of nodes in your node palette:
 
 ### mbus-client
 
-Configuration node that stores the M-Bus client connection informations that can be used from other nodes. Once a client is inited it will try to open the connection, if it fails it keeps retry. Once the connection is opened it scans the M-Bus network (via secondary IDs) to find all connected devices. Once the scan is done (**it can takes many minutes, depends on the number of total meters in the network**) it will emit the event `mbScanComplete` with the array of secondary IDs found:
+Configuration node that manage the M-Bus client connection. Once a client is inited it will try to open the SERIAL/TCP connection with provided configuration, if it fails it keeps retry every `reconnectTimeout` milliseconds. Once the connection is opened it scans the M-Bus network (via secondary IDs) to find all connected devices. Once the scan is done (**it can takes many minutes, depends on the number of total meters in the network**) it will emit the event `mbScanComplete` with the array of secondary IDs found:
 
 ```javascript
 ['11490378', '11865378', '11497492']
@@ -122,6 +122,8 @@ Once the scan is completed it will start reading all devices one by one to updat
 }
 ```
 
+If property `storeDevices` is set to true, once connected, the client will check for existing devices json file `mbus_devices.json` that is stored in `.node-red` dir. If it is a valid `Array` of `string` or `Number` it will start reading devices and so the scan is skipped.
+
 Other **mbus-client** events are:
 
 * *mbConnected*: when the connection has been successfully opened
@@ -133,7 +135,7 @@ Other **mbus-client** events are:
 
 ### mbus-out
 
-This node will subscribe to a M-Bus client events and will output messages on `mbScanComplete` and `mbDeviceUpdated` events with data in `msg.payload` and the event name in `msg.topic`.
+This node will subscribe to a M-Bus client events and will output messages on `mbScanComplete`, `mbDeviceUpdated` and `mbDevicesLoaded` events with data in `msg.payload` and the event name in `msg.topic`.
 
 
 # Authors

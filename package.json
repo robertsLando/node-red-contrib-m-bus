@@ -10,6 +10,7 @@
     }
   },
   "dependencies": {
+    "jsonfile": "^4.0.0",
     "node-mbus": "^0.3.0",
     "serialport": "^6.1.1"
   },

@@ -6,7 +6,8 @@
       "port": "Port",
       "serialport": "Serial port",
       "baudRate": "Baud rate",
-      "autoConnect": "Auto connect"
+      "reconnectTimeout": "Reconnect Timeout (ms)",
+      "storeDevices": "Store devices"
     }
   }
 }
