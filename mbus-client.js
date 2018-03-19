@@ -237,7 +237,7 @@ module.exports = function (RED) {
 
       started = true;
 
-      var mbusOptions = {autoConnect: false};
+      var mbusOptions = {autoConnect: true};
 
       if (this.clienttype === 'tcp') {
         mbusOptions.host = this.tcpHost;

@@ -137,6 +137,9 @@ Other **mbus-client** events are:
 
 This node will subscribe to a M-Bus client events and will output messages on `mbScanComplete`, `mbDeviceUpdated` and `mbDevicesLoaded` events with data in `msg.payload` and the event name in `msg.topic`.
 
+# Know Bugs
+
+At the moment seems that node doesn't works if deployed with usb connected, It only works if usb is connected after deploy. Tring to fix this ASAP
 
 # Authors
 

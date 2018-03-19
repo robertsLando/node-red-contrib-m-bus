@@ -57,7 +57,7 @@ module.exports = function (RED) {
     }
 
     function onReconnect() {
-      setStatus('Reconnecting', 'warning')
+      setStatus('Reconnecting...', 'warning')
     }
 
     //----- SUBSCRIBE TO CLIENT EVENTS -----------------------------------------
