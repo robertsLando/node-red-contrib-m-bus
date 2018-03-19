@@ -298,7 +298,7 @@ module.exports = function (RED) {
       done()
     });
 
-    node.connect();
+    restartConnection();
   }
 
   RED.nodes.registerType('mbus-client', MbusClientNode)
