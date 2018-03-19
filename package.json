@@ -6,7 +6,8 @@
   "node-red": {
     "nodes": {
       "mbus-client": "mbus-client.js",
-      "mbus-reader": "mbus-out.js"
+      "mbus-out": "mbus-out.js",
+      "mbus-controller": "mbus-controller.js"
     }
   },
   "dependencies": {

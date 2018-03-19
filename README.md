@@ -21,9 +21,13 @@ Run the following command in the root directory of your Node-RED install
 
     npm install node-red-contrib-m-bus --save
 
+# Hardware needed
+
+You need an M-Bus-Serial or an M-Bus-Ethernet (TCP) converter.
+
 # Nodes
 
-This package will add a new set of nodes in your node palette:
+This package will add a new set of nodes in your node palette.
 
 ### mbus-client
 

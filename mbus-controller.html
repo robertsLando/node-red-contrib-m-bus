@@ -1,0 +1,92 @@
+
+<script type="text/javascript">
+  RED.nodes.registerType('mbus-controller', {
+    category: 'M Bus',
+    color: '#03A9F4',
+    defaults: {
+      name: {value: ''},
+      client: {type: 'mbus-client', required: true},
+    },
+    inputs: 1,
+    outputs: 1,
+    align: "right",
+    icon: 'bridge.png',
+    paletteLabel: 'M-Bus Controller',
+    label: function () {
+      return this.name || 'M-Bus Controller'
+    },
+    oneditprepare: function () {
+    }
+  })
+</script>
+
+<script type="text/x-red" data-template-name="mbus-controller">
+    <div class="form-row">
+        <label for="node-input-client"><i class="icon-globe"></i> <span data-i18n="mbus.label.client"></span></label>
+        <input type="text" id="node-input-client">
+    </div>
+    <div class="form-row">
+        <label for="node-input-name"><i class="icon-tag"></i> <span data-i18n="node-red:common.label.name"></span></label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+
+
+<script type="text/x-red" data-help-name="mbus-controller">
+<p>Used to manually send commands to an M-Bus client.</p>
+
+<h3>Inputs</h3>
+<ol class="node-ports">
+   <li>Input
+       <dl class="message-properties">
+           <dt>payload <span class="property-type">Object</span></dt>
+           <dd>Command data.</dd>
+       </dl>
+       <dl class="message-properties">
+           <dt>topic <span class="property-type">String</span></dt>
+           <dd>Command name.</dd>
+       </dl>
+   </li>
+</ol>
+
+<h3>Outputs</h3>
+<ol class="node-ports">
+   <li>Output
+       <dl class="message-properties">
+           <dt>payload <span class="property-type">Object</span></dt>
+           <dd>Response data of the command.</dd>
+       </dl>
+       <dl class="message-properties">
+           <dt>topic <span class="property-type">String</span></dt>
+           <dd>Command name.</dd>
+       </dl>
+   </li>
+</ol>
+
+<h3>Input</h3>
+
+<code>msg.topic</code> contains the command name. Allowed commands are:
+<ul>
+    <li><b>scan</b> - Used to trigger a new scan of M-Bus network (will update <code>mbus_devices.json</code> file if <code>storeDevices</code> option is set to true)
+    <li><b>getDevices</b> - Used to get the Object with devices all datas and errors.
+    <li><b>getDevice</b> - Read a specific device ID specified in <code>msg.payload</code>.
+</ul>
+
+<h3>Outputs</h3>
+
+<code>msg.topic</code> contains the command name. Outputs of commands are:
+<ul>
+    <li><b>scan</b> - <code>msg.payload</code> will contain the Array of devices found
+    <li><b>getDevices</b> - <code>msg.payload.devices</code> will contains the Devices data Object, <code>msg.payload.errors will contain a list of devices with an error</code>.
+    <li><b>getDevice</b> -<code>msg.payload</code> will contain requested device ID data.
+</ul>
+
+<p>For more info about the payload of messages check
+<a href="https://github.com/robertsLando/node-red-contrib-m-bus#nodes">Nodes</a> section</p>
+
+<h3>References</h3>
+  <ul>
+      <li><a href="https://github.com/robertsLando/node-red-contrib-m-bus">GitHub</a> - the node github repository</li>
+  </ul>
+
+</script>

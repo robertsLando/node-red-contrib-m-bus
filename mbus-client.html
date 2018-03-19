@@ -14,6 +14,7 @@
 
       reconnectTimeout: {value: 10000, required: true, validate: RED.validators.number()},
       storeDevices: {value: true},
+      disableLogs: {value: true}
     },
     label: function () {
       let node = this
@@ -111,7 +112,7 @@
         <input type="text" id="node-config-input-name" placeholder="Name">
     </div>
     <div class="form-row">
-        <label for="node-config-input-clienttype"><i class="icon-bookmark"></i> <span data-i18n="mbus.label.type"></span></label>
+        <label for="node-config-input-clienttype"><i class="fa fa-plug"></i> <span data-i18n="mbus.label.type"></span></label>
         <select type="text" id="node-config-input-clienttype" style="width:140px;">
             <option value="tcp" select>TCP</option>
             <option value="serial">Serial</option>
@@ -120,11 +121,11 @@
     <hr>
     <div id="node-config-inputs-tcp">
         <div class="form-row">
-            <label for="node-config-input-tcpHost"><i class="icon-bookmark"></i> <span data-i18n="mbus.label.host"></span></label>
+            <label for="node-config-input-tcpHost"><i class="fa fa-link"></i> <span data-i18n="mbus.label.host"></span></label>
             <input type="text" id="node-config-input-tcpHost">
         </div>
         <div class="form-row">
-            <label for="node-config-input-tcpPort"><i class="icon-bookmark"></i> <span data-i18n="mbus.label.port"></span></label>
+            <label for="node-config-input-tcpPort"><i class="fa fa-random"></i> <span data-i18n="mbus.label.port"></span></label>
             <input type="text" id="node-config-input-tcpPort" placeholder="2000">
         </div>
     </div>
@@ -157,8 +158,14 @@
       <input type="text" id="node-config-input-reconnectTimeout" placeholder="10000">
   </div>
   <div class="form-row">
-      <label for="node-config-input-storeDevices"><i class="icon-save"></i> <span data-i18n="mbus.label.storeDevices"></span></label>
-      <input type="checkbox" id="node-config-input-storeDevices">
+      <label></label>
+      <input type="checkbox" id="node-config-input-storeDevices" style="display: inline-block; width: auto; vertical-align: top;">
+      <label for="node-config-input-storeDevices"><span data-i18n="mbus.label.storeDevices"></span></label>
+  </div>
+  <div class="form-row">
+      <label></label>
+      <input type="checkbox" id="node-config-input-disableLogs" style="display: inline-block; width: auto; vertical-align: top;">
+      <label for="node-config-input-disableLogs"><span data-i18n="mbus.label.disableLogs"></span></label>
   </div>
 
 </script>
