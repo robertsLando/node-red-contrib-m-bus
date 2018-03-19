@@ -19,7 +19,7 @@ Node-Red node that uses [node-mbus](https://github.com/Apollon77/node-mbus) to c
 
 Run the following command in the root directory of your Node-RED install
 
-    npm install node-red-contrib-modbus --save
+    npm install node-red-contrib-m-bus --save
 
 # Nodes
 
