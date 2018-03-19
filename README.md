@@ -19,7 +19,7 @@ Node-Red node that uses [node-mbus](https://github.com/Apollon77/node-mbus) to c
 
 Run the following command in the root directory of your Node-RED install
 
-    npm install node-red-contrib-modbus
+    npm install node-red-contrib-modbus --save
 
 # Nodes
 
@@ -29,13 +29,13 @@ This package will add a new set of nodes in your node palette:
 
 Configuration node that manage the M-Bus client connection. Once a client is inited it will try to open the SERIAL/TCP connection with provided configuration, if it fails it keeps retry every `reconnectTimeout` milliseconds. Once the connection is opened it scans the M-Bus network (via secondary IDs) to find all connected devices. Once the scan is done (**it can takes many minutes, depends on the number of total meters in the network**) it will emit the event `mbScanComplete` with the array of secondary IDs found:
 
-```javascript
-['11490378', '11865378', '11497492']
+```json
+["11490378", "11865378", "11497492"]
 ```
 
 Once the scan is completed it will start reading all devices one by one to update values, every time a device will be updated it will emit the event `mbDeviceUpdated` with the new updated device info
 
-```javascript
+```json
 {
   "SlaveInformation": {
     "Id": 11490378,
@@ -122,7 +122,7 @@ Once the scan is completed it will start reading all devices one by one to updat
 }
 ```
 
-If property `storeDevices` is set to true, once connected, the client will check for existing devices json file `mbus_devices.json` that is stored in `.node-red` dir. If it is a valid `Array` of `string` or `Number` it will start reading devices and so the scan is skipped.
+If property `storeDevices` is set to true, once connected, the client will check for existing devices json file `mbus_devices.json` that is stored in `.node-red` dir. If it is a valid `Array` of `string`s or `Number`s, once it is successfuly loaded, client will emit `mbDevicesLoaded` event and than start reading devices (scan is skipped so the init process is quicker in this way).
 
 Other **mbus-client** events are:
 
@@ -137,7 +137,7 @@ Other **mbus-client** events are:
 
 This node will subscribe to a M-Bus client events and will output messages on `mbScanComplete`, `mbDeviceUpdated` and `mbDevicesLoaded` events with data in `msg.payload` and the event name in `msg.topic`.
 
-# Know Bugs
+# Known Bugs
 
 At the moment seems that node doesn't works if deployed with usb connected, It only works if usb is connected after deploy. Tring to fix this ASAP
 
