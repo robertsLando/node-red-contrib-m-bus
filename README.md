@@ -156,7 +156,7 @@ This node is used to send commands to an M-Bus client. `msg.topic` must contains
 
 Every command is queued, **M-Bus is really slow** and takes around 10 second for each read, many minutes for a scan, **don't send repeated commands** but wait for the response. Max commands queue is set to 10 commands, after the limit is reached the new command will be pushed in queue and the 'oldest' command in queue will be removed.
 
-# M-Bas Dashboard Flow
+# M-Bus Dashboard Flow
 
 ### Flow  
 
