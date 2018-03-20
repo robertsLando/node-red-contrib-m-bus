@@ -55,6 +55,7 @@ module.exports = function (RED) {
     var lastStatus = null;
     var started = false;
     var closed = false;
+    var reconnecting = false;
     var lastStatus = null;
 
     //data
@@ -139,7 +140,8 @@ module.exports = function (RED) {
           //all devices have an error
           if (Object.keys(errors).length === devices.length) {
             restartConnection()
-          }
+          }else //read next
+            readDevices();
 
         }else{ //no error
 
@@ -150,12 +152,14 @@ module.exports = function (RED) {
           //move index to next
           lastUpdated++;
           devicesData[addr] = data;
+          devicesData[addr].lastUpdate = new Date();
+
           emitEvent('mbDeviceUpdated', {data:data});
 
           if(controllerQueue.length > 0){
             node.doNextOperation();
           }else
-          readDevices();
+            readDevices();
         }
 
       })
@@ -182,28 +186,10 @@ module.exports = function (RED) {
       }
     }
 
-
-    //----- EVENTS -----
-
-    function onConnect(err){
-      if(err){
-        emitEvent('mbError', {data: err.message, message: 'Error while connecting ' + err.message});
-        restartConnection()
-      }
-      else{
-        emitEvent('mbConnect', {message: 'Connected'});
-
-        if(node.storeDevices)
-        loadDevices(true);
-        else
-        delayFunction(scanSecondary);
-      }
-    }
-
     //----- CONNECTION MANAGEMENT ------
 
     //connect the client
-    function connect(reconnecting){
+    function connect(){
 
       if(started && !reconnecting)
       return;
@@ -221,7 +207,28 @@ module.exports = function (RED) {
       }
 
       client = new MbusMaster(mbusOptions);
-      client.connect(onConnect);
+
+      try {
+        client.connect(function(err){
+          if(err){
+            emitEvent('mbError', {data: err.message, message: 'Error while connecting ' + err.message});
+            restartConnection()
+          }
+          else{
+            emitEvent('mbConnect', {message: 'Connected'});
+
+            if(node.storeDevices)
+            loadDevices(true);
+            else
+            delayFunction(scanSecondary);
+          }
+        });
+      } catch (e) {
+        emitEvent('mbError', {data: e.message, message: 'Error while connecting ' + e.message});
+        restartConnection();
+      }finally{
+        reconnecting = false;
+      }
     }
 
     //close the client
@@ -246,15 +253,18 @@ module.exports = function (RED) {
 
     function restartConnection(){
 
-      //stop reconnection if node is being closed
-      if(closed)
+      //stop reconnection if node is being closed or there is a reconnection in progress
+      if(closed || reconnecting)
         return;
 
-      emitEvent('mbReconnect', { message: 'Restarting client' })
+      reconnecting = true;
+
+      emitEvent('mbReconnect', { message: 'Restarting client...' })
 
       reconnectTimeout = setTimeout(function(){
+        reconnectTimeout = null;
         close(function(){
-          connect(true);
+          connect();
         });
       }, RECONNECT_TIMEOUT);
     }
@@ -288,14 +298,7 @@ module.exports = function (RED) {
             restartConnection()
           }
           else{
-            devices = data;
-
-            if(node.storeDevices)
-            storeDevices();
-
             emitEvent('mbScanComplete', {data:data});
-
-            readDevices();
           }
         });
 
@@ -367,9 +370,22 @@ module.exports = function (RED) {
       return lastStatus || {event: 'mbClose'};
     }
 
+    node.restart = function(){
+      restartConnection();
+    }
+
     //--------------------------------------------------------------------------
     //-------- NODE EVENTS -----------------------------------------------------
     //--------------------------------------------------------------------------
+
+    node.on('mbScanComplete', function(data){
+      devices = data;
+
+      if(node.storeDevices)
+        storeDevices();
+
+      readDevices();
+    });
 
     //triggered when node is removed or project is redeployed
     node.on('close', function (done) {
