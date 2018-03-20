@@ -10,7 +10,9 @@ module.exports = function (RED) {
     'mbScan': 'debug',
     'mbScanComplete': 'debug',
     'mbDeviceUpdated': 'debug',
-    'mbDevicesLoaded': 'debug'
+    'mbDevicesLoaded': 'debug',
+    'mbCommandExec': 'debug',
+    'mbCommandDone': 'debug'
   };
 
   function MbusClientNode (config) {
@@ -20,6 +22,7 @@ module.exports = function (RED) {
     let jsonfile = require('jsonfile')
     let DEVICES_FILE = 'mbus_devices.json'
     let DELAY_TIMEOUT = 3000;
+    let MAX_QUEUE_DIM = 10;
     let node = this
 
     //POLYFILL
@@ -51,6 +54,7 @@ module.exports = function (RED) {
     var delayTimeout = null
     var lastStatus = null;
     var started = false;
+    var closed = false;
     var lastStatus = null;
 
     //data
@@ -61,22 +65,11 @@ module.exports = function (RED) {
     var controllerQueue = [];
 
 
-    //----- PRIVATE FUNCTIONS --------------------------------------------------
+    //--------------------------------------------------------------------------
+    //-------- PRIVATE FUNCTIONS -----------------------------------------------
+    //--------------------------------------------------------------------------
 
-    function onConnect(err){
-      if(err){
-        emitEvent('mbError', {data: err.message, message: 'Error while connecting ' + err.message});
-        restartConnection()
-      }
-      else{
-        emitEvent('mbConnect', {message: 'Connected'});
-
-        if(node.storeDevices)
-        loadDevices(true);
-        else
-        delayFunction(node.scanSecondary);
-      }
-    }
+    //----- UTILS -----
 
     //store new devices configuration
     function storeDevices(){
@@ -97,7 +90,7 @@ module.exports = function (RED) {
           devices = data;
           delayFunction(readDevices);
         }else if(scanIfFail){
-          delayFunction(node.scanSecondary);
+          delayFunction(scanSecondary);
         }
       })
     }
@@ -121,6 +114,7 @@ module.exports = function (RED) {
       return true;
     }
 
+    //read next device
     function readDevices(){
 
       if(!devices || devices.length == 0)
@@ -135,7 +129,7 @@ module.exports = function (RED) {
 
       var addr = devices[lastUpdated];
 
-      node.getData(addr, function(err,data){
+      getData(addr, function(err,data){
 
         if (err) {
           emitEvent('mbError', {data: err.message, message: 'Error while reading device ' + addr + ' ' + err.message});
@@ -168,32 +162,11 @@ module.exports = function (RED) {
 
     }
 
+    //wraps a function to queue
     function wrapFunction(fn, context, params) {
       return function() {
         fn.apply(context, params);
       };
-    }
-
-    function restartConnection(){
-
-      emitEvent('mbReconnect', { message: 'Restarting client' })
-
-      reconnectTimeout = setTimeout(function(){
-        if(client){
-          try {
-            client.close(function(err){
-              if(err)
-              emitEvent('mbError', {data: err.message, message: 'Error while closing client ' + err.message});
-            })
-          } catch (e) {
-            emitEvent('mbError', {data: e.message, message: 'Error while closing client ' + e.message});
-          }finally{
-            node.connect(true);
-          }
-        }else
-          node.connect(true);
-
-      }, RECONNECT_TIMEOUT);
     }
 
     //emit an event with data and log it if it contains a message
@@ -209,23 +182,87 @@ module.exports = function (RED) {
       }
     }
 
-    //----- PUBLIC FUNCTIONS ---------------------------------------------------
 
-    node.queueOperation = function(functionName, data){
-      controllerQueue.push(wrapFunction(node[functionName], node, data));
+    //----- EVENTS -----
 
-      if(controllerQueue.length > 10)
-        controllerQueue.shift();
+    function onConnect(err){
+      if(err){
+        emitEvent('mbError', {data: err.message, message: 'Error while connecting ' + err.message});
+        restartConnection()
+      }
+      else{
+        emitEvent('mbConnect', {message: 'Connected'});
+
+        if(node.storeDevices)
+        loadDevices(true);
+        else
+        delayFunction(scanSecondary);
+      }
     }
 
-    node.doNextOperation = function(){
-      if(controllerQueue.length > 0) //there are no more operation in queue
-      (controllerQueue.shift())();
-      else //restart reads
-      readDevices();
+    //----- CONNECTION MANAGEMENT ------
+
+    //connect the client
+    function connect(reconnecting){
+
+      if(started && !reconnecting)
+      return;
+
+      started = true;
+
+      var mbusOptions = {autoConnect: true};
+
+      if (node.clienttype === 'tcp') {
+        mbusOptions.host = node.tcpHost;
+        mbusOptions.port = node.tcpPort;
+      }else {
+        mbusOptions.serialPort = node.serialPort;
+        mbusOptions.serialBaudrate = node.serialBaudrate;
+      }
+
+      client = new MbusMaster(mbusOptions);
+      client.connect(onConnect);
     }
 
-    node.getData = function(addr, cb){
+    //close the client
+    function close(cb){
+      if (client) {
+        try {
+          client.close(function (err) {
+            if(err)
+            emitEvent('mbError', {data: err.message, message: 'Error while closing client ' + err.message});
+          });
+        } catch (e) {
+          emitEvent('mbError', {data: e.message, message: 'Error while closing client ' + e.message});
+        }finally{
+          emitEvent('mbClosed', {message: 'Connection closed'});
+          cb()
+        }
+      }else
+      emitEvent('mbClosed', {message: 'Connection closed'});
+
+      cb()
+    }
+
+    function restartConnection(){
+
+      //stop reconnection if node is being closed
+      if(closed)
+        return;
+
+      emitEvent('mbReconnect', { message: 'Restarting client' })
+
+      reconnectTimeout = setTimeout(function(){
+        close(function(){
+          connect(true);
+        });
+      }, RECONNECT_TIMEOUT);
+    }
+
+    //----- M-BUS METHODS ------
+
+    //get device addr data
+    function getData(addr, cb){
       try{
         client.getData(addr, function(err, data){
           cb(err,data);
@@ -236,15 +273,8 @@ module.exports = function (RED) {
       }
     }
 
-    node.restartRead = function(){
-      readDevices();
-    }
-
-    node.getStats = function(){
-      return {devices: devicesData, errors: errors}
-    }
-
-    node.scanSecondary = function(cb){
+    //scan secondary IDs
+    function scanSecondary(cb){
       emitEvent('mbScan', {message: 'Scan started...'});
 
       try {
@@ -275,34 +305,71 @@ module.exports = function (RED) {
       }
     }
 
+
+    //--------------------------------------------------------------------------
+    //-------- PUBLIC FUNCTIONS ------------------------------------------------
+    //--------------------------------------------------------------------------
+
+    //add a command to queue
+    node.queueOperation = function(functionName, data){
+
+      var fn;
+
+      try {
+        fn = eval(functionName)
+      } catch (e) {
+        emitEvent('mbError', {data: e.message, message: 'Error while queuing command ' + e.message});
+      }
+
+      if(fn)
+      controllerQueue.push({
+        fn: wrapFunction(fn, node, data),
+        args: data,
+        name: functionName
+      });
+
+      if(controllerQueue.length > MAX_QUEUE_DIM)
+        controllerQueue.shift();
+    }
+
+    //dequeue a command or restart reading devices if no more commands in queue
+    node.doNextOperation = function(){
+      if(controllerQueue.length > 0){ //there are operation in queue
+        var op = controllerQueue.shift();
+
+        var fnName = op.name;
+        var message = "Executing command: ";
+
+        switch (fnName) {
+          case 'getData':
+          message += 'getDevice ID=' + (op.args ? op.args[0] : 'null');
+          break;
+          case 'scanSecondary':
+          message += 'scan'
+          break;
+        }
+
+        emitEvent('mbCommandExec', {data: message, message: message});
+
+        op.fn();
+      }
+      else //no more queued operations, restart reads
+      readDevices();
+    }
+
+    //gewt devices data and errors
+    node.getStats = function(){
+      return {devices: devicesData, errors: errors}
+    }
+
     //get currently status or 'closed'
     node.getStatus = function(){
       return lastStatus || {event: 'mbClose'};
     }
 
-    //connect the client
-    node.connect = function(reconnecting){
-
-      if(started && !reconnecting)
-      return;
-
-      started = true;
-
-      var mbusOptions = {autoConnect: true};
-
-      if (this.clienttype === 'tcp') {
-        mbusOptions.host = this.tcpHost;
-        mbusOptions.port = this.tcpPort;
-      }else {
-        mbusOptions.serialPort = this.serialPort;
-        mbusOptions.serialBaudrate = this.serialBaudrate;
-      }
-
-      client = new MbusMaster(mbusOptions);
-      client.connect(onConnect);
-    }
-
-    //----- NODE EVENTS --------------------------------------------------
+    //--------------------------------------------------------------------------
+    //-------- NODE EVENTS -----------------------------------------------------
+    //--------------------------------------------------------------------------
 
     //triggered when node is removed or project is redeployed
     node.on('close', function (done) {
@@ -317,6 +384,8 @@ module.exports = function (RED) {
       lastStatus = null;
       controllerQueue = [];
 
+      closed = true;
+
       //stop running timeouts
 
       if(reconnectTimeout){
@@ -330,27 +399,11 @@ module.exports = function (RED) {
       }
 
       //close client
-
-      if (client) {
-        try {
-          client.close(function (err) {
-            if(err)
-            emitEvent('mbError', {data: err.message, message: 'Error while closing client ' + err.message});
-          });
-        } catch (e) {
-          emitEvent('mbError', {data: e.message, message: 'Error while closing client ' + e.message});
-        }finally{
-          emitEvent('mbClosed', {message: 'Connection closed'});
-          done()
-        }
-      }else
-      emitEvent('mbClosed', {message: 'Connection closed'});
-
-      done()
+      close(done);
 
     }); //end on 'close'
 
-    //start the client
+    //start the client (don't use connect here, will stuck the process)
     restartConnection();
   }
 

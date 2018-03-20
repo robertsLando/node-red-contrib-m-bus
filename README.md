@@ -141,6 +141,20 @@ Other **mbus-client** events are:
 
 This node will subscribe to a M-Bus client events and will output messages on `mbScanComplete`, `mbDeviceUpdated` and `mbDevicesLoaded` events with data in `msg.payload` and the event name in `msg.topic`.
 
+### mbus-controller
+
+This node is used to send commands to an M-Bus client. `msg.topic` must contains command name and `msg.payload` tha command data. Allowed commands are:
+
+* *scan*: Start a scan of devices. Will return an `Array` of `string`s with found devices secondary IDs
+* *getDevices*: Will return an `Object` as `msg.payload` with two properties:
+  * **devices**: `Object` where keys are devices secondary IDs and values are devices data.
+  * **errors**: `Object` where keys are devices secondary IDs and values are `true` if devices has an error
+* *getDevice*: Input `msg.payload.address` must contain the address (primary or secondary) of the device to read. Output will contain requested device datas.
+
+**IMPORTANT NOTE**
+
+Every command is queued, **M-Bus is really slow** and takes around 10 second for each read, many minutes for a scan, **don't send repeated commands** but wait for the response. Max commands queue is set to 10 commands, after the limit is reached the new command will be pushed in queue and the 'oldest' command in queue will be removed.
+
 # Authors
 
 [Daniel Lando](https://github.com/robertsLando)

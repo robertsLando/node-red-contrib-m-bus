@@ -12,6 +12,18 @@ module.exports = function (RED) {
     let node = this
 
 
+    function onCommandExec(message) {
+      setStatus(message, 'info');
+    }
+
+    function onCommandDone(message) {
+      setStatus(message, 'success');
+    }
+
+    client.on('mbCommandExec', onCommandExec);
+    client.on('mbCommandDone', onCommandDone);
+
+
     node.on('input', function (msg) {
       if (!client) {
         setStatus('error', 'No client found')
@@ -21,11 +33,13 @@ module.exports = function (RED) {
           switch (msg.topic) {
             case 'scan':
             client.queueOperation('scanSecondary', [function(err, data){
-              if(err)
+              if(err){
                 node.error('Error while scanning', msg)
+              }
               else{
                 node.send({topic: 'scan', payload: data});
                 client.emit('mbScanComplete', data);
+                client.emit('mbCommandDone', 'Scanning done');
               }
 
               if(client)
@@ -51,11 +65,13 @@ module.exports = function (RED) {
             }
 
             client.queueOperation('getData', [msg.payload.address, function(err, data){
-              if(err)
+              if(err){
                 node.error('Error while reading device', msg)
+              }
               else{
                 node.send({topic: 'getDevice', payload: data});
                 client.emit('mbDeviceUpdated', data);
+                client.emit('mbCommandDone', 'Device updated ID=' + data.SlaveInformation.Id);
               }
 
                 if(client)
