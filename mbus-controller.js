@@ -13,6 +13,7 @@ module.exports = function (RED) {
 
     var commandsQueue = [];
 
+    showQueue();
 
     function onCommandExec(message) {
       setStatus(message, 'info');
@@ -22,8 +23,14 @@ module.exports = function (RED) {
       setStatus(message, 'success');
     }
 
+    function onReconnect() {
+      commandsQueue = [];
+      showQueue();
+    }
+
     client.on('mbCommandExec', onCommandExec);
     client.on('mbCommandDone', onCommandDone);
+    client.on('mbReconnect', onReconnect);
 
 
     node.on('input', function (msg) {
@@ -34,8 +41,14 @@ module.exports = function (RED) {
 
           switch (msg.topic) {
             case 'scan':
+
             commandsQueue.push({fn: 'scanSecondary'})
+            showQueue();
+
             client.queueOperation('scanSecondary', [function(err, data){
+
+              var cmd = commandsQueue.shift();
+
               if(err){
                 node.error('Error while scanning', msg)
                 setStatus('Error while scanning', 'error');
@@ -67,8 +80,12 @@ module.exports = function (RED) {
             }
 
             commandsQueue.push({fn: 'getData', id: msg.payload.address});
+            showQueue();
 
             client.queueOperation('getData', [msg.payload.address, function(err, data){
+
+              var cmd = commandsQueue.shift();
+
               if(err){
                 node.error('Error while reading device')
                 setStatus('Error while reading device ID', 'error');
@@ -76,11 +93,11 @@ module.exports = function (RED) {
               else{
                 node.send({topic: 'getDevice', payload: data});
                 client.emit('mbDeviceUpdated', data);
-                client.emit('mbCommandDone', 'Device updated ID=' + data.SlaveInformation.Id);
+                client.emit('mbCommandDone', 'Device updated ID=' + cmd.id);
               }
 
-                if(client)
-                  client.doNextOperation();
+              if(client)
+                client.doNextOperation();
             }]);
 
             break;
@@ -95,6 +112,10 @@ module.exports = function (RED) {
             node.error('Topic Not Valid, allowed commands are: "scan", "getDevice", "getDevices" and "restart"', msg)
           }
     })
+
+    function showQueue(){
+      setStatus('Queued commands: ' + commandsQueue.length, 'info');
+    }
 
     //Set node status
     function setStatus (message, type) {

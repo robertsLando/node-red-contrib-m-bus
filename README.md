@@ -158,7 +158,7 @@ Every command is queued, **M-Bus is really slow** and takes around 10 second for
 
 # M-Bus Dashboard Flow
 
-### Flow  
+### Flow
 
 Remember to change client settings based on your connection parameters
 

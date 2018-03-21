@@ -50,19 +50,22 @@ module.exports = function (RED) {
     //----- PRIVATE VARS -------------------------------------------------------
 
     var client = null
+    var lastStatus = null
+
     var reconnectTimeout = null
     var delayTimeout = null
-    var lastStatus = null;
-    var started = false;
-    var closed = false;
-    var reconnecting = false;
-    var lastStatus = null;
+    var closeTimeout = null;
+
+    var started = false
+    var closed = false
+    var reconnecting = false
+    var operationRunning = false;
 
     //data
     var devices = []
     var errors = {};
     var devicesData = {};
-    var lastUpdated = 0;
+    var updateIndex = 0;
     var controllerQueue = [];
 
 
@@ -118,6 +121,11 @@ module.exports = function (RED) {
     //read next device
     function readDevices(){
 
+      if(closed){
+        emitClose()
+        return;
+      }
+
       if(!devices || devices.length == 0)
       {
         emitEvent('mbError', {data: "No device to update", message: 'No device to update'});
@@ -125,10 +133,10 @@ module.exports = function (RED) {
       }
 
       //all devices read, restart from 0
-      if(lastUpdated >= devices.length)
-      lastUpdated = 0;
+      if(updateIndex >= devices.length)
+      updateIndex = 0;
 
-      var addr = devices[lastUpdated];
+      var addr = devices[updateIndex];
 
       getData(addr, function(err,data){
 
@@ -137,28 +145,28 @@ module.exports = function (RED) {
 
           errors[addr] = true;
 
-          //all devices have an error
+          //all devices have an error, restart connection
           if (Object.keys(errors).length === devices.length) {
             restartConnection()
-          }else //read next
+          }else if(controllerQueue.length > 0){
+            node.doNextOperation();
+          }else //read
             readDevices();
 
-        }else{ //no error
+        }else{ //successfull read
 
-          //remove error device
+          //remove error device if present
           if(errors[addr])
           delete errors[addr];
 
           //move index to next
-          lastUpdated++;
-          devicesData[addr] = data;
-          devicesData[addr].lastUpdate = new Date();
+          updateIndex++;
 
           emitEvent('mbDeviceUpdated', {data:data});
 
           if(controllerQueue.length > 0){
             node.doNextOperation();
-          }else
+          }else //read
             readDevices();
         }
 
@@ -186,12 +194,35 @@ module.exports = function (RED) {
       }
     }
 
+    function emitClose(){
+      emitEvent('mbClose', {data: 'Closed', message: 'Connection closed'});
+    }
+
+    //Waits operations end before closing the connection, preevents SEGMENTATION FAULT error
+    function tryClose(done){
+      if(!closeTimeout){
+        if(operationRunning){
+          closeTimeout = setTimeout(function(){
+            closeTimeout = null;
+            tryClose(done)
+          }, 500);
+        }
+        else
+          close(done)
+      }
+    }
+
     //----- CONNECTION MANAGEMENT ------
+
+    function isConnected(){
+      return client && client.connect();
+    }
 
     //connect the client
     function connect(){
 
-      if(started && !reconnecting)
+      //do a connect just if client isn't already started or there is a reconnection
+      if((started && !reconnecting) || closed)
       return;
 
       started = true;
@@ -210,9 +241,12 @@ module.exports = function (RED) {
 
       try {
         client.connect(function(err){
+
+          reconnecting = false; //re-enable reconnection
+
           if(err){
             emitEvent('mbError', {data: err.message, message: 'Error while connecting ' + err.message});
-            restartConnection()
+            restartConnection();
           }
           else{
             emitEvent('mbConnect', {message: 'Connected'});
@@ -224,10 +258,9 @@ module.exports = function (RED) {
           }
         });
       } catch (e) {
-        emitEvent('mbError', {data: e.message, message: 'Error while connecting ' + e.message});
-        restartConnection();
-      }finally{
+        emitEvent('mbError', {data: e.message, message: 'Exception while connecting ' + e.message});
         reconnecting = false;
+        restartConnection();
       }
     }
 
@@ -240,15 +273,15 @@ module.exports = function (RED) {
             emitEvent('mbError', {data: err.message, message: 'Error while closing client ' + err.message});
           });
         } catch (e) {
-          emitEvent('mbError', {data: e.message, message: 'Error while closing client ' + e.message});
+          emitEvent('mbError', {data: e.message, message: 'Exception while closing client ' + e.message});
         }finally{
-          emitEvent('mbClosed', {message: 'Connection closed'});
+          emitClose();
           cb()
         }
-      }else
-      emitEvent('mbClosed', {message: 'Connection closed'});
-
-      cb()
+      }else{
+        emitClose()
+        cb()
+      }
     }
 
     function restartConnection(){
@@ -262,8 +295,7 @@ module.exports = function (RED) {
       emitEvent('mbReconnect', { message: 'Restarting client...' })
 
       reconnectTimeout = setTimeout(function(){
-        reconnectTimeout = null;
-        close(function(){
+        tryClose(function(){
           connect();
         });
       }, RECONNECT_TIMEOUT);
@@ -273,23 +305,42 @@ module.exports = function (RED) {
 
     //get device addr data
     function getData(addr, cb){
+
+      if(closed || !isConnected()){
+        cb('Connection not open', null)
+        return;
+      }
+
+      operationRunning = true;
+
       try{
         client.getData(addr, function(err, data){
+          operationRunning = false;
           cb(err,data);
         });
 
       } catch (e) {
+        operationRunning = false;
         cb(e, null)
       }
     }
 
     //scan secondary IDs
     function scanSecondary(cb){
+
+      if(closed || !isConnected()){
+        cb('Connection not open', null)
+        return;
+      }
+
       emitEvent('mbScan', {message: 'Scan started...'});
+
+      operationRunning = true;
 
       try {
 
         client.scanSecondary(function(err, data) {
+          operationRunning = false;
           if(cb){
             cb(err,data)
           }
@@ -303,7 +354,8 @@ module.exports = function (RED) {
         });
 
       } catch (e) {
-        emitEvent('mbError', {data: e.message, message: 'Error while scanning ' + e.message});
+        operationRunning = false;
+        emitEvent('mbError', {data: e.message, message: 'Exception while scanning ' + e.message});
         restartConnection()
       }
     }
@@ -321,7 +373,7 @@ module.exports = function (RED) {
       try {
         fn = eval(functionName)
       } catch (e) {
-        emitEvent('mbError', {data: e.message, message: 'Error while queuing command ' + e.message});
+        emitEvent('mbError', {data: e.message, message: 'Exception while queuing command ' + e.message});
       }
 
       if(fn)
@@ -387,6 +439,14 @@ module.exports = function (RED) {
       readDevices();
     });
 
+    node.on('mbDeviceUpdated', function(data){
+      var id = data && data.SlaveInformation && data.SlaveInformation.Id ? data.SlaveInformation.Id : null;
+      if(id){
+        devicesData[id] = data;
+        devicesData[id].lastUpdate = new Date();
+      }
+    });
+
     //triggered when node is removed or project is redeployed
     node.on('close', function (done) {
 
@@ -394,8 +454,8 @@ module.exports = function (RED) {
 
       devices = [];
       errors = {};
-      data = {};
-      lastUpdated = 0;
+      devicesData = {};
+      updateIndex = 0;
       started = false;
       lastStatus = null;
       controllerQueue = [];
@@ -415,7 +475,7 @@ module.exports = function (RED) {
       }
 
       //close client
-      close(done);
+      tryClose(done);
 
     }); //end on 'close'
 
