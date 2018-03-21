@@ -104,6 +104,7 @@ module.exports = function (RED) {
     //Add empty device if it has errors since first read
     function addEmptyDevice(id){
       var tmp = JSON.parse(JSON.stringify(emptyDevice));
+      tmp.SlaveInformation.Id = parseSecondaryID(id);
       devicesData[id] = tmp;
     }
 
@@ -156,7 +157,6 @@ module.exports = function (RED) {
 
         //move index to next (even if there is an error)
         updateIndex++;
-        addr = parseSecondaryID(addr);
 
         if (err) {
           emitEvent('mbError', {data: err.message, message: 'Error while reading device ' + addr + ' ' + err.message});
@@ -169,6 +169,7 @@ module.exports = function (RED) {
 
           devicesData[addr].lastUpdate = new Date();
           devicesData[addr].error = err.message;
+          devicesData[addr].secondaryID = addr;
 
           //all devices have an error, restart connection
           if (Object.keys(errors).length === devices.length) {
@@ -183,6 +184,8 @@ module.exports = function (RED) {
           //remove error device if present
           if(errors[addr])
           delete errors[addr];
+
+          data.secondaryID = addr;
 
           emitEvent('mbDeviceUpdated', {data:data});
 
@@ -462,7 +465,7 @@ module.exports = function (RED) {
     });
 
     node.on('mbDeviceUpdated', function(data){
-      var id = data && data.SlaveInformation && data.SlaveInformation.Id ? data.SlaveInformation.Id : null;
+      var id = data ? data.secondaryID : null;
       if(id){
         devicesData[id] = data;
         devicesData[id].lastUpdate = new Date();
