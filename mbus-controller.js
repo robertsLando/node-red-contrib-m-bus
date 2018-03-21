@@ -87,13 +87,13 @@ module.exports = function (RED) {
               var cmd = commandsQueue.shift();
 
               if(err){
-                node.error('Error while reading device')
-                setStatus('Error while reading device ID', 'error');
+                node.error('Error while reading device ID ' + cmd.id)
+                setStatus('Error while reading device ID ' + cmd.id, 'error');
               }
               else{
                 node.send({topic: 'getDevice', payload: data});
                 client.emit('mbDeviceUpdated', data);
-                client.emit('mbCommandDone', 'Device updated ID=' + cmd.id);
+                client.emit('mbCommandDone', 'Device updated ID ' + cmd.id);
               }
 
               if(client)

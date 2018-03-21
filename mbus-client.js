@@ -25,6 +25,8 @@ module.exports = function (RED) {
     let MAX_QUEUE_DIM = 10;
     let node = this
 
+    var emptyDevice = {SlaveInformation : {}, DataRecord: []};
+
     //POLYFILL
     if (!Array.isArray) {
       Array.isArray = function(arg) {
@@ -99,6 +101,18 @@ module.exports = function (RED) {
       })
     }
 
+    //Add empty device if it has errors since first read
+    function addEmptyDevice(id){
+      var tmp = JSON.parse(JSON.stringify(emptyDevice));
+      devicesData[id] = tmp;
+    }
+
+    function parseSecondaryID(id){
+      id = id.substr(0,8);
+      id = parseInt(id); //remove leading 0
+      return id.toString();
+    }
+
     //Delay a function
     function delayFunction(fun){
       delayTimeout = setTimeout(fun, DELAY_TIMEOUT)
@@ -140,10 +154,21 @@ module.exports = function (RED) {
 
       getData(addr, function(err,data){
 
+        //move index to next (even if there is an error)
+        updateIndex++;
+        addr = parseSecondaryID(addr);
+
         if (err) {
           emitEvent('mbError', {data: err.message, message: 'Error while reading device ' + addr + ' ' + err.message});
 
           errors[addr] = true;
+
+          //add an empty device so I know it has an error
+          if(!devicesData[addr])
+            addEmptyDevice(addr)
+
+          devicesData[addr].lastUpdate = new Date();
+          devicesData[addr].error = err.message;
 
           //all devices have an error, restart connection
           if (Object.keys(errors).length === devices.length) {
@@ -158,9 +183,6 @@ module.exports = function (RED) {
           //remove error device if present
           if(errors[addr])
           delete errors[addr];
-
-          //move index to next
-          updateIndex++;
 
           emitEvent('mbDeviceUpdated', {data:data});
 
@@ -444,6 +466,7 @@ module.exports = function (RED) {
       if(id){
         devicesData[id] = data;
         devicesData[id].lastUpdate = new Date();
+        devicesData[id].error = 'Ok';
       }
     });
 
