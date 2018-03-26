@@ -61,7 +61,6 @@ module.exports = function (RED) {
     var started = false
     var closed = false
     var reconnecting = false
-    var operationRunning = false;
 
     //data
     var devices = []
@@ -159,7 +158,6 @@ module.exports = function (RED) {
         updateIndex++;
 
         if (err) {
-          emitEvent('mbError', {data: err.message, message: 'Error while reading device ' + addr + ' ' + err.message});
 
           errors[addr] = true;
 
@@ -174,10 +172,8 @@ module.exports = function (RED) {
           //all devices have an error, restart connection
           if (Object.keys(errors).length === devices.length) {
             restartConnection()
-          }else if(controllerQueue.length > 0){
+          }else
             node.doNextOperation();
-          }else //read
-            readDevices();
 
         }else{ //successfull read
 
@@ -185,14 +181,7 @@ module.exports = function (RED) {
           if(errors[addr])
           delete errors[addr];
 
-          data.secondaryID = addr;
-
-          emitEvent('mbDeviceUpdated', {data:data});
-
-          if(controllerQueue.length > 0){
-            node.doNextOperation();
-          }else //read
-            readDevices();
+          node.doNextOperation();
         }
 
       })
@@ -221,20 +210,6 @@ module.exports = function (RED) {
 
     function emitClose(){
       emitEvent('mbClose', {data: 'Closed', message: 'Connection closed'});
-    }
-
-    //Waits operations end before closing the connection, preevents SEGMENTATION FAULT error
-    function tryClose(done){
-      if(!closeTimeout){
-        if(operationRunning){
-          closeTimeout = setTimeout(function(){
-            closeTimeout = null;
-            tryClose(done)
-          }, 500);
-        }
-        else
-          close(done)
-      }
     }
 
     //----- CONNECTION MANAGEMENT ------
@@ -292,17 +267,14 @@ module.exports = function (RED) {
     //close the client
     function close(cb){
       if (client) {
-        try {
-          client.close(function (err) {
-            if(err)
-            emitEvent('mbError', {data: err.message, message: 'Error while closing client ' + err.message});
-          });
-        } catch (e) {
-          emitEvent('mbError', {data: e.message, message: 'Exception while closing client ' + e.message});
-        }finally{
+        client.close(function (err) {
+          if(err)
+          emitEvent('mbError', {data: err.message, message: 'Error while closing client ' + err.message});
+
           emitClose();
-          cb()
-        }
+          cb();
+
+        });
       }else{
         emitClose()
         cb()
@@ -320,7 +292,7 @@ module.exports = function (RED) {
       emitEvent('mbReconnect', { message: 'Restarting client...' })
 
       reconnectTimeout = setTimeout(function(){
-        tryClose(function(){
+        close(function(){
           connect();
         });
       }, RECONNECT_TIMEOUT);
@@ -328,61 +300,62 @@ module.exports = function (RED) {
 
     //----- M-BUS METHODS ------
 
+    function canDoOperation(){
+      if(reconnecting || closed || !isConnected() || closeTimeout){
+        return false;
+      }
+
+      return true;
+    }
+
     //get device addr data
     function getData(addr, cb){
 
-      if(closed || !isConnected()){
-        cb('Connection not open', null)
+      if(!canDoOperation()){
+        if(cb) cb(new Error('Connection not open'), null)
+        emitEvent('mbError', {data: 'Connection not open', message: 'Error while reading device ' + addr + ': ' + 'Connection not open'});
         return;
       }
 
-      operationRunning = true;
+      client.getData(addr, function(err, data){
 
-      try{
-        client.getData(addr, function(err, data){
-          operationRunning = false;
-          cb(err,data);
-        });
+        if(cb) cb(err,data);
 
-      } catch (e) {
-        operationRunning = false;
-        cb(e, null)
-      }
+        if (err) {
+          emitEvent('mbError', {data: err.message, message: 'Error while reading device ' + addr + ': ' + err.message});
+
+        }else{ //successfull read
+          data.secondaryID = addr;
+          emitEvent('mbDeviceUpdated', {data:data});
+        }
+      });
+
     }
 
     //scan secondary IDs
     function scanSecondary(cb){
 
-      if(closed || !isConnected()){
-        cb('Connection not open', null)
+      if(!canDoOperation()){
+        if(cb) cb(new Error('Connection not open'), null)
+        emitEvent('mbError', {data:'Connection not open', message: 'Error while scanning: Connection not open'});
         return;
       }
 
       emitEvent('mbScan', {message: 'Scan started...'});
 
-      operationRunning = true;
+      client.scanSecondary(function(err, data) {
+        if(cb) cb(err,data);
 
-      try {
+        if(err){
+          emitEvent('mbError', {data:err.message, message: 'Error while scanning: ' + err.message});
+          restartConnection()
+        }
+        else{
+          emitEvent('mbScanComplete', {data:data, message: 'Scan completed'});
+        }
 
-        client.scanSecondary(function(err, data) {
-          operationRunning = false;
-          if(cb){
-            cb(err,data)
-          }
-          else if(err){
-            emitEvent('mbError', {data:err.message, message: 'Error while scanning ' + err.message});
-            restartConnection()
-          }
-          else{
-            emitEvent('mbScanComplete', {data:data});
-          }
-        });
+      });
 
-      } catch (e) {
-        operationRunning = false;
-        emitEvent('mbError', {data: e.message, message: 'Exception while scanning ' + e.message});
-        restartConnection()
-      }
     }
 
 
@@ -433,8 +406,9 @@ module.exports = function (RED) {
 
         op.fn();
       }
-      else //no more queued operations, restart reads
-      readDevices();
+      else{ //no more queued operations, restart reads
+        readDevices();
+      }
     }
 
     //gewt devices data and errors
@@ -501,7 +475,7 @@ module.exports = function (RED) {
       }
 
       //close client
-      tryClose(done);
+      close(done);
 
     }); //end on 'close'
 

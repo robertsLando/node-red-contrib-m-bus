@@ -50,12 +50,10 @@ module.exports = function (RED) {
               var cmd = commandsQueue.shift();
 
               if(err){
-                node.error('Error while scanning', msg)
                 setStatus('Error while scanning', 'error');
               }
               else{
                 node.send({topic: 'scan', payload: data});
-                client.emit('mbScanComplete', data);
                 client.emit('mbCommandDone', 'Scanning done');
               }
 
@@ -87,13 +85,11 @@ module.exports = function (RED) {
               var cmd = commandsQueue.shift();
 
               if(err){
-                node.error('Error while reading device ID ' + cmd.id)
-                setStatus('Error while reading device ID ' + cmd.id, 'error');
+                setStatus('Error while reading device ID ' + (cmd ? cmd.id : ''), 'error');
               }
               else{
                 node.send({topic: 'getDevice', payload: data});
-                client.emit('mbDeviceUpdated', data);
-                client.emit('mbCommandDone', 'Device updated ID ' + cmd.id);
+                client.emit('mbCommandDone', 'Device updated ID ' + (cmd ? cmd.id : ''));
               }
 
               if(client)
@@ -107,7 +103,6 @@ module.exports = function (RED) {
             case 'restart':
               client.restart();
             break;
-
             default:
             node.error('Topic Not Valid, allowed commands are: "scan", "getDevice", "getDevices" and "restart"', msg)
           }
