@@ -69,7 +69,12 @@
 <ul>
     <li><b>scan</b> - Used to trigger a new scan of M-Bus network (will update <code>mbus_devices.json</code> file if <code>storeDevices</code> option is set to true)
     <li><b>getDevices</b> - Used to get the Object with devices all datas and errors.
-    <li><b>getDevice</b> - Read a specific device ID specified in <code>msg.payload</code>.
+    <li><b>getDevice</b> - Read a specific device ID specified in <code>msg.payload.address</code>.
+    <li><b>setPrimary</b> - Set device Primary ID. <code>msg.payload</code> needs <code>oldAddr</code> and <code>newAddr</code> properties: 
+    <code>`{newAddr: 'theNewAddr', oldAddr: 'theOldAddress'}`</code>.
+    <code>oldAddr</code> can be the primary or the secondary ID of the device.
+    <code>newAddr</code> must be a valid primary ID <code>Int</code> between 0-250.
+
 </ul>
 
 <h3>Outputs</h3>

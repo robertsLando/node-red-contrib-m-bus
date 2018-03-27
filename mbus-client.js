@@ -8,6 +8,7 @@ module.exports = function (RED) {
     'mbConnect': 'log',
     'mbReconnect': 'debug',
     'mbScan': 'debug',
+    'mbPrimarySet': 'debug',
     'mbScanComplete': 'debug',
     'mbDeviceUpdated': 'debug',
     'mbDevicesLoaded': 'debug',
@@ -92,8 +93,6 @@ module.exports = function (RED) {
 
         if(isValidArray(data)){
           emitEvent('mbDevicesLoaded', {data:data});
-          devices = data;
-          delayFunction(readDevices);
         }else if(scanIfFail){
           delayFunction(scanSecondary);
         }
@@ -111,6 +110,10 @@ module.exports = function (RED) {
       id = id.substr(0,8);
       id = parseInt(id); //remove leading 0
       return id.toString();
+    }
+
+    function isSecondaryID(id){
+      return id.toString().length == 16;
     }
 
     //Delay a function
@@ -216,6 +219,14 @@ module.exports = function (RED) {
 
     function isConnected(){
       return client && client.connect();
+    }
+
+    function initDevices(){
+      if(devices){
+        for (var i = 0; i < devices.length; i++) {
+          addEmptyDevice(devices[i]);
+        }
+      }
     }
 
     //connect the client
@@ -325,12 +336,36 @@ module.exports = function (RED) {
           emitEvent('mbError', {data: err.message, message: 'Error while reading device ' + addr + ': ' + err.message});
 
         }else{ //successfull read
-          data.secondaryID = addr;
+          isSecondaryID(addr) ? data.secondaryID = addr : data.primaryID = addr;
           emitEvent('mbDeviceUpdated', {data:data});
         }
       });
 
     }
+
+    //get device addr data
+    function setPrimary(oldAddr, newAddr, cb){
+
+      if(!canDoOperation()){
+        if(cb) cb(new Error('Connection not open'), null)
+        emitEvent('mbError', {data: 'Connection not open', message: 'Error while setting primary address '+ newAddr +' to ' + oldAddr + ': ' + 'Connection not open'});
+        return;
+      }
+
+      client.setPrimaryId(oldAddr, newAddr, function(err){
+
+        if(cb) cb(err);
+
+        if (err) {
+          emitEvent('mbError', {data: err.message, message: 'Error while setting primary address '+ newAddr +' to ' + oldAddr + ': ' + err.message});
+
+        }else{ //successfull read
+          emitEvent('mbPrimarySet', {data: {old: oldAddr, new:newAddr}});
+        }
+      });
+
+    }
+
 
     //scan secondary IDs
     function scanSecondary(cb){
@@ -394,12 +429,17 @@ module.exports = function (RED) {
         var message = "Executing command: ";
 
         switch (fnName) {
+          case 'setPrimary':
+          message += 'setPrimary Old=' + (op.args ? op.args[0] : 'null') + " New=" + (op.args ? op.args[1] : 'null');
+          break;
           case 'getData':
           message += 'getDevice ID=' + (op.args ? op.args[0] : 'null');
           break;
           case 'scanSecondary':
           message += 'scan'
           break;
+          default:
+          message += "Undefined"
         }
 
         emitEvent('mbCommandExec', {data: message, message: message});
@@ -431,6 +471,7 @@ module.exports = function (RED) {
 
     node.on('mbScanComplete', function(data){
       devices = data;
+      initDevices();
 
       if(node.storeDevices)
         storeDevices();
@@ -438,12 +479,42 @@ module.exports = function (RED) {
       readDevices();
     });
 
+    node.on('mbDevicesLoaded', function(data){
+      devices = data;
+      initDevices();
+      delayFunction(readDevices);
+    });
+
     node.on('mbDeviceUpdated', function(data){
-      var id = data ? data.secondaryID : null;
-      if(id){
-        devicesData[id] = data;
+      if(!data || closed || reconnecting) return;
+
+      var id;
+
+      if(data.secondaryID){
+        id = data.secondaryID;
+        devicesData[id].SlaveInformation = data.SlaveInformation;
+        devicesData[id].DataRecord = data.DataRecord;
         devicesData[id].lastUpdate = new Date();
         devicesData[id].error = 'Ok';
+      }else if(data.primaryID){ //getData has been called with a primary ID
+        //check if device is present
+        var device = null;
+        id= data.primaryID;
+
+        //look for the device
+        for (var d in devicesData) {
+          if(devicesData[d].SlaveInformation.Id == data.SlaveInformation.Id){
+            device = d;
+            break;
+          }
+        }
+
+        if(device){
+          devicesData[device].SlaveInformation = data.SlaveInformation;
+          devicesData[device].DataRecord = data.DataRecord;
+          devicesData[device].primaryID = id;
+        }
+
       }
     });
 

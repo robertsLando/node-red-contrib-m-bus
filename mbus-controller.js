@@ -70,13 +70,6 @@ module.exports = function (RED) {
               return;
             }
 
-            msg.payload.address = parseInt(msg.payload.address) || 0
-
-            if (!(Number.isInteger(msg.payload.address))) {
-              node.error('Address Not Valid', msg)
-              return
-            }
-
             commandsQueue.push({fn: 'getData', id: msg.payload.address});
             showQueue();
 
@@ -90,6 +83,40 @@ module.exports = function (RED) {
               else{
                 node.send({topic: 'getDevice', payload: data});
                 client.emit('mbCommandDone', 'Device updated ID ' + (cmd ? cmd.id : ''));
+              }
+
+              if(client)
+                client.doNextOperation();
+            }]);
+
+            break;
+            case 'setPrimary':
+
+            if(!msg.payload && (!msg.payload.oldAddr || !msg.payload.newAddr)){
+              node.error('Missing data, set a valid "oldAddr" and "newAddr"', msg)
+              return;
+            }
+
+            msg.payload.newAddr = parseInt(msg.payload.newAddr);
+
+            if (!(Number.isInteger(msg.payload.newAddr)) || msg.payload.newAddr < 0 || msg.payload.newAddr > 250) {
+              node.error('New primary address not valid, must be an integer between 1-250', msg)
+              return
+            }
+
+            commandsQueue.push({fn: 'setPrimary', new: msg.payload.newAddr, old: msg.payload.oldAddr});
+            showQueue();
+
+            client.queueOperation('setPrimary', [msg.payload.oldAddr, msg.payload.newAddr, function(err){
+
+              var cmd = commandsQueue.shift();
+
+              if(err){
+                setStatus('Error while setting new primary ID ' + cmd.new + ' of device ' + (cmd ? cmd.old : ''), 'error');
+              }
+              else{
+                node.send({topic: 'setPrimary', payload: {newAddr:cmd.new, oldAddr:cmd.old}});
+                client.emit('mbCommandDone', 'Setted new primary ID ' + cmd.new + ' to device ' + cmd.old);
               }
 
               if(client)

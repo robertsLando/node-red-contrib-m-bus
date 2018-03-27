@@ -21,7 +21,9 @@ module.exports = function (RED) {
      'mbScan': onScan,
      'mbScanComplete': onScanComplete,
      'mbDeviceUpdated': onDeviceUpdated,
-     'mbDevicesLoaded': onDevicesLoaded
+     'mbDevicesLoaded': onDevicesLoaded,
+     'mbPrimarySet': onPrimarySet,
+
    };
 
 
@@ -49,6 +51,11 @@ module.exports = function (RED) {
     function onDeviceUpdated(device) {
       setStatus("Device " + device.SlaveInformation.Id + " updated", 'success')
       node.send({topic: "mbDeviceUpdated", payload: device});
+    }
+
+    function onPrimarySet(data) {
+      setStatus("Device " + data.old + " successfully set to primary ID " + data.new, 'success')
+      node.send({topic: "mbPrimarySet", payload: data});
     }
 
     function onDevicesLoaded(devices) {
