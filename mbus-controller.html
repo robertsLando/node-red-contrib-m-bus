@@ -67,13 +67,14 @@
 
 <code>msg.topic</code> contains the command name. Allowed commands are:
 <ul>
+    <li><b>restart</b> - Restarts the client connection.
     <li><b>scan</b> - Used to trigger a new scan of M-Bus network (will update <code>mbus_devices.json</code> file if <code>storeDevices</code> option is set to true)
     <li><b>getDevices</b> - Used to get the Object with devices all datas and errors.
     <li><b>getDevice</b> - Read a specific device ID specified in <code>msg.payload.address</code>.
-    <li><b>setPrimary</b> - Set device Primary ID. <code>msg.payload</code> needs <code>oldAddr</code> and <code>newAddr</code> properties: 
-    <code>`{newAddr: 'theNewAddr', oldAddr: 'theOldAddress'}`</code>.
-    <code>oldAddr</code> can be the primary or the secondary ID of the device.
-    <code>newAddr</code> must be a valid primary ID <code>Int</code> between 0-250.
+    <li><b>setPrimary</b> - Set device Primary ID. <code>msg.payload</code> needs <code>oldAddr</code> and <code>newAddr</code> properties:
+    <code>oldAddr</code> can be the primary or the secondary ID of the device,
+    <code>newAddr</code> must be a valid primary ID <code>Int</code> between 0-250,
+    <code>{newAddr: 'theNewAddr', oldAddr: 'theOldAddress'}</code>.
 
 </ul>
 
@@ -81,10 +82,11 @@
 
 <code>msg.topic</code> contains the command name. Outputs of commands are:
 <ul>
-    <li><b>scan</b> - <code>msg.payload</code> will contain the Array of devices found
+    <li><b>scan</b> - If success, <code>msg.payload</code> will contain the Array of devices found
     <li><b>getDevices</b> - <code>msg.payload.devices</code> will contains the Devices data Object, <code>msg.payload.errors will contain a list of devices with an error</code>.
-    <li><b>getDevice</b> -<code>msg.payload</code> will contain requested device ID data.
-    <li><b>restart</b> - Restarts the client connection.
+    <li><b>getDevice</b> - If success, <code>msg.payload</code> will contain requested device ID data.
+    <li><b>setPrimary</b> - If success, <code>msg.payload</code> will contain the same info as input payload
+    <code>{newAddr: 'theNewAddr', oldAddr: 'theOldAddress'}</code>.
 </ul>
 
 <p>For more info about the payload of messages check
