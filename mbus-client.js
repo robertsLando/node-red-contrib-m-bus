@@ -49,6 +49,7 @@ module.exports = function (RED) {
 
     node.storeDevices = config.storeDevices;
     node.disableLogs = config.disableLogs;
+    node.autoScan = config.autoScan;
 
     //----- PRIVATE VARS -------------------------------------------------------
 
@@ -262,10 +263,12 @@ module.exports = function (RED) {
           else{
             emitEvent('mbConnect', {message: 'Connected'});
 
-            if(node.storeDevices)
-            loadDevices(true);
-            else
-            delayFunction(scanSecondary);
+            if(node.autoScan){
+              if(node.storeDevices)
+                loadDevices(true);
+              else
+                delayFunction(scanSecondary);
+            }
           }
         });
       } catch (e) {

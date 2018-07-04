@@ -13,6 +13,7 @@
       serialBaudrate: {value: 2400, required: true, validate: RED.validators.number()},
 
       reconnectTimeout: {value: 10000, required: true, validate: RED.validators.number()},
+      autoScan: {value: true},
       storeDevices: {value: true},
       disableLogs: {value: true}
     },
@@ -159,13 +160,18 @@
   </div>
   <div class="form-row">
       <label></label>
+      <input type="checkbox" id="node-config-input-autoScan" style="display: inline-block; width: auto; vertical-align: top;">
+      <label style="width:65%" for="node-config-input-autoScan"><span data-i18n="mbus.label.autoScan"></span></label>
+  </div>
+  <div class="form-row">
+      <label></label>
       <input type="checkbox" id="node-config-input-storeDevices" style="display: inline-block; width: auto; vertical-align: top;">
-      <label for="node-config-input-storeDevices"><span data-i18n="mbus.label.storeDevices"></span></label>
+      <label style="width:65%" for="node-config-input-storeDevices"><span data-i18n="mbus.label.storeDevices"></span></label>
   </div>
   <div class="form-row">
       <label></label>
       <input type="checkbox" id="node-config-input-disableLogs" style="display: inline-block; width: auto; vertical-align: top;">
-      <label for="node-config-input-disableLogs"><span data-i18n="mbus.label.disableLogs"></span></label>
+      <label style="width:65%" for="node-config-input-disableLogs"><span data-i18n="mbus.label.disableLogs"></span></label>
   </div>
 
 </script>
@@ -182,7 +188,8 @@ Initializes the MBusMaster instance to interact with the devices.
     <li><b>host/port</b>: For TCP communication you set the host and the port to connect to. Both parameters are mandatory</li>
     <li><b>serialPort/serialBaudRate</b>: For Serial communication you set the serialPort (e.g. /dev/ttyUSB0) and the serialBaudRate to connect. Default Baudrate is 2400 baut if option is missing</li>
     <li><b>Reconnect timoeut</b>: Milliseconds to wait between two reconnection tries</li>
-    <li><b>Store devices</b>: If true the node, once connected, will check for existing file <code>mbus_devices.json</code> in <code>.node-red</code> directory, if it doesn't exist it will do the scan and create one with found devices</li>
+    <li><b>Auto scan and read</b>: If true the node, once connected, will automatically scan the Mbus network and start reading found devices</li>
+    <li><b>Store scanned devices</b>: If auto scan and read is enabled and this options is true, the node, once connected, will check for existing file <code>mbus_devices.json</code> in <code>.node-red</code> directory, if it doesn't exist it will do the scan and create one with found devices</li>
   </ul>
 <h3>References</h3>
   <ul>

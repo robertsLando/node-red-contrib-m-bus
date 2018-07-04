@@ -131,7 +131,7 @@ module.exports = function (RED) {
               client.restart();
             break;
             default:
-            node.error('Topic Not Valid, allowed commands are: "scan", "getDevice", "getDevices" and "restart"', msg)
+            node.error('Topic Not Valid, allowed commands are: "scan", "getDevice", "getDevices", "restart" and "setPrimary"', msg)
           }
     })
 

@@ -35,13 +35,13 @@ This package will add a new set of nodes in your node palette.
 
 ### mbus-client
 
-Configuration node that manage the M-Bus client connection. Once a client is inited it will try to open the SERIAL/TCP connection with provided configuration, if it fails it keeps retry every `reconnectTimeout` milliseconds. Once the connection is opened it scans the M-Bus network (via secondary IDs) to find all connected devices. Once the scan is done (**it can takes many minutes, depends on the number of total meters in the network**) it will emit the event `mbScanComplete` with the array of secondary IDs found:
+Configuration node that manage the M-Bus client connection. Once a client is inited it will try to open the SERIAL/TCP connection with provided configuration, if it fails it keeps retry every `reconnectTimeout` milliseconds. Once the connection is opened it scans the M-Bus network (via secondary IDs) to find all connected devices (if auto scan option is enabled). Once the scan is done (**it can takes many minutes, depends on the number of total meters in the network**) it will emit the event `mbScanComplete` with the array of secondary IDs found:
 
 ```json
 ["11490378", "11865378", "11497492"]
 ```
 
-Once the scan is completed it will start reading all devices one by one to update values, every time a device will be updated it will emit the event `mbDeviceUpdated` with the new updated device info
+Once the scan is completed it will start reading all devices one by one to update values (if auto scan option is enabled), every time a device will be updated it will emit the event `mbDeviceUpdated` with the new updated device info
 
 ```json
 {

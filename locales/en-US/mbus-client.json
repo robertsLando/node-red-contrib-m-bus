@@ -7,9 +7,9 @@
       "serialport": "Serial port",
       "baudRate": "Baud rate",
       "reconnectTimeout": "Reconnect Timeout (ms)",
-      "storeDevices": "Store devices",
+      "autoScan": "Auto scan and read",
+      "storeDevices": "Store scanned devices",
       "disableLogs": "Disable Logs"
-
     }
   }
 }
