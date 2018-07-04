@@ -11,9 +11,9 @@
     }
   },
   "dependencies": {
-    "jsonfile": "^4.0.0",
-    "node-mbus": "^0.5.4",
-    "serialport": "^6.2.0"
+    "jsonfile": "4.0.0",
+    "node-mbus": "0.5.3",
+    "serialport": "6.2.1"
   },
   "devDependencies": {},
   "scripts": {
