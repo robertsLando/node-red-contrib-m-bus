@@ -507,6 +507,11 @@ module.exports = function (RED) {
 
       if(data.secondaryID){
         id = data.secondaryID;
+
+        //add an empty device so I know it has an error
+        if(!devicesData[id])
+          addEmptyDevice(id)
+
         devicesData[id].SlaveInformation = data.SlaveInformation;
         devicesData[id].DataRecord = data.DataRecord;
         devicesData[id].lastUpdate = new Date();
