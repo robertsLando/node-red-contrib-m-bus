@@ -168,10 +168,6 @@ module.exports = function (RED) {
 
           errors[addr] = true;
 
-          //add an empty device so I know it has an error
-          if(!devicesData[addr])
-            addEmptyDevice(addr)
-
           devicesData[addr].lastUpdate = new Date();
           devicesData[addr].error = err.message;
           devicesData[addr].secondaryID = addr;
@@ -333,6 +329,10 @@ module.exports = function (RED) {
         emitEvent('mbError', {data: 'Connection not open', message: 'Error while reading device ' + addr + ': ' + 'Connection not open'});
         return;
       }
+
+      //add an empty device so I know it has an error
+      if(!devicesData[id])
+        addEmptyDevice(id)
 
       client.getData(addr, function(err, data){
 
@@ -507,10 +507,6 @@ module.exports = function (RED) {
 
       if(data.secondaryID){
         id = data.secondaryID;
-
-        //add an empty device so I know it has an error
-        if(!devicesData[id])
-          addEmptyDevice(id)
 
         devicesData[id].SlaveInformation = data.SlaveInformation;
         devicesData[id].DataRecord = data.DataRecord;
