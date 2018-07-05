@@ -331,8 +331,8 @@ module.exports = function (RED) {
       }
 
       //add an empty device so I know it has an error
-      if(!devicesData[id])
-        addEmptyDevice(id)
+      if(!devicesData[addr])
+        addEmptyDevice(addr)
 
       client.getData(addr, function(err, data){
 
