@@ -49,7 +49,7 @@ module.exports = function (RED) {
 
     node.storeDevices = config.storeDevices;
     node.disableLogs = config.disableLogs;
-    node.autoScan = config.autoScan;
+    node.autoScan = config.autoScan === false ? false : true;
 
     //----- PRIVATE VARS -------------------------------------------------------
 
@@ -63,6 +63,7 @@ module.exports = function (RED) {
     var started = false
     var closed = false
     var reconnecting = false
+    var doingOperation = false
 
     //data
     var devices = []
@@ -143,6 +144,8 @@ module.exports = function (RED) {
         emitClose()
         return;
       }
+
+      if(!node.autoScan) return;
 
       if(!devices || devices.length == 0)
       {
@@ -421,12 +424,18 @@ module.exports = function (RED) {
 
       if(controllerQueue.length > MAX_QUEUE_DIM)
         controllerQueue.shift();
+
+      if((!node.autoScan || devices.length == 0) && !doingOperation){
+        node.doNextOperation();
+      }
     }
 
     //dequeue a command or restart reading devices if no more commands in queue
     node.doNextOperation = function(){
       if(controllerQueue.length > 0){ //there are operation in queue
         var op = controllerQueue.shift();
+
+        doingOperation = true;
 
         var fnName = op.name;
         var message = "Executing command: ";
@@ -450,7 +459,10 @@ module.exports = function (RED) {
         op.fn();
       }
       else{ //no more queued operations, restart reads
-        readDevices();
+        if(node.autoScan)
+          readDevices();
+
+        doingOperation = false;
       }
     }
 
