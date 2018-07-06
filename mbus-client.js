@@ -22,6 +22,7 @@ module.exports = function (RED) {
     let MbusMaster = require('node-mbus')
     let jsonfile = require('jsonfile')
     let DEVICES_FILE = 'mbus_devices.json'
+    let UNKNOWN_DEVICE = 'Unknown_';
     let DELAY_TIMEOUT = 3000;
     let MAX_QUEUE_DIM = 10;
     let node = this
@@ -103,10 +104,26 @@ module.exports = function (RED) {
 
     //Add empty device if it has errors since first read
     function addEmptyDevice(id){
+      var tmp = JSON.parse(JSON.stringify(emptyDevice));
       if(isSecondaryID(id)){
-        var tmp = JSON.parse(JSON.stringify(emptyDevice));
-        tmp.SlaveInformation.Id = parseSecondaryID(id);
-        devicesData[id] = tmp;
+        id = parseSecondaryID(id);
+        tmp.SlaveInformation.Id = id;
+      }else{
+        id = UNKNOWN_DEVICE + id;
+      }
+
+      devicesData[id] = tmp;
+    }
+
+    //return a device by using his secondary or primary id
+    function getDevice(addr){
+      if(isSecondaryID(addr))
+        return devicesData[parseSecondaryID(addr)];
+
+      for(var id in devicesData){
+        if(devicesData[id].primaryID == addr){
+          return devicesData[id];
+        }
       }
     }
 
@@ -169,10 +186,6 @@ module.exports = function (RED) {
         if (err) {
 
           errors[addr] = true;
-
-          devicesData[addr].lastUpdate = new Date();
-          devicesData[addr].error = err.message;
-          devicesData[addr].secondaryID = addr;
 
           //all devices have an error, restart connection
           if (Object.keys(errors).length === devices.length) {
@@ -323,7 +336,7 @@ module.exports = function (RED) {
       return true;
     }
 
-    //get device addr data
+    //get device addr data by primary or secondaryID
     function getData(addr, cb){
 
       if(!canDoOperation()){
@@ -333,7 +346,7 @@ module.exports = function (RED) {
       }
 
       //add an empty device so I know it has an error
-      if(!devicesData[addr])
+      if(!devicesData[addr] && !devicesData[UNKNOWN_DEVICE + addr])
         addEmptyDevice(addr)
 
       client.getData(addr, function(err, data){
@@ -342,6 +355,12 @@ module.exports = function (RED) {
 
         if (err) {
           emitEvent('mbError', {data: err.message, message: 'Error while reading device ' + addr + ': ' + err.message});
+
+          var device = getDevice(addr);
+          if(device){
+            devicesData[addr].lastUpdate = new Date();
+            devicesData[addr].error = err.message;
+          }
 
         }else{ //successfull read
           isSecondaryID(addr) ? data.secondaryID = addr : data.primaryID = addr;
@@ -505,35 +524,18 @@ module.exports = function (RED) {
     node.on('mbDeviceUpdated', function(data){
       if(!data || closed || reconnecting) return;
 
-      var id;
+      var id = data.SlaveInformation.Id;
 
-      if(data.secondaryID){
-        id = data.secondaryID;
-
-        devicesData[id].SlaveInformation = data.SlaveInformation;
-        devicesData[id].DataRecord = data.DataRecord;
-        devicesData[id].lastUpdate = new Date();
-        devicesData[id].error = 'Ok';
-      }else if(data.primaryID){ //getData has been called with a primary ID
-        //check if device is present
-        var device = null;
-        id= data.primaryID;
-
-        //look for the device
-        for (var d in devicesData) {
-          if(devicesData[d].SlaveInformation.Id == data.SlaveInformation.Id){
-            device = d;
-            break;
-          }
-        }
-
-        if(device){
-          devicesData[device].SlaveInformation = data.SlaveInformation;
-          devicesData[device].DataRecord = data.DataRecord;
-          devicesData[device].primaryID = id;
-        }
-
+      if(!devicesData[id]){ //primary id first scan
+        devicesData[id] = JSON.parse(JSON.stringify(devicesData[UNKNOWN_DEVICE + data.primaryID]));
+        delete devicesData[UNKNOWN_DEVICE + data.primaryID];
       }
+
+      devicesData[id].SlaveInformation = data.SlaveInformation;
+      devicesData[id].DataRecord = data.DataRecord;
+      devicesData[id].lastUpdate = new Date();
+      devicesData[id].error = 'Ok';
+
     });
 
     //triggered when node is removed or project is redeployed
