@@ -534,7 +534,7 @@ module.exports = function (RED) {
       devicesData[id].SlaveInformation = data.SlaveInformation;
       devicesData[id].DataRecord = data.DataRecord;
       devicesData[id].lastUpdate = new Date();
-      devicesData[id].error = 'Ok';
+      devicesData[id].error = null;
 
     });
 
