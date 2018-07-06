@@ -532,7 +532,7 @@ module.exports = function (RED) {
 
       var id = data.SlaveInformation.Id;
 
-      if(!devicesData[id]){ //primary id first scan
+      if(data.primaryID && devicesData[UNKNOWN_DEVICE + data.primaryID]){ //primary id first scan
         devicesData[id] = JSON.parse(JSON.stringify(devicesData[UNKNOWN_DEVICE + data.primaryID]));
         delete devicesData[UNKNOWN_DEVICE + data.primaryID];
       }
