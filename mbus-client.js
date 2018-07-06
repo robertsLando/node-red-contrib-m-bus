@@ -107,11 +107,11 @@ module.exports = function (RED) {
         var tmp = JSON.parse(JSON.stringify(emptyDevice));
         tmp.SlaveInformation.Id = parseSecondaryID(id);
         devicesData[id] = tmp;
-      }    
+      }
     }
 
     function parseSecondaryID(id){
-      id = id.substr(0,8);
+      id = id.toString().substr(0,8);
       id = parseInt(id); //remove leading 0
       return id.toString();
     }
