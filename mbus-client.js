@@ -377,7 +377,7 @@ module.exports = function (RED) {
           isSecondaryID(addr) ? data.secondaryID = addr : data.primaryID = addr;
 
           //add the new device
-          if(!device)
+          if(!devicesData[data.SlaveInformation.Id])
             devicesData[data.SlaveInformation.Id] = data;
 
           emitEvent('mbDeviceUpdated', {data:data});
@@ -545,7 +545,7 @@ module.exports = function (RED) {
       var id = data.SlaveInformation.Id;
 
       if(data.primaryID && devicesData[UNKNOWN_DEVICE + data.primaryID]){ //primary id first scan
-        
+
         if(!devicesData[id])
           devicesData[id] = JSON.parse(JSON.stringify(devicesData[UNKNOWN_DEVICE + data.primaryID]));
 
