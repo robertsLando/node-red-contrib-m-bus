@@ -122,11 +122,15 @@ module.exports = function (RED) {
       if(isSecondaryID(addr))
         return devicesData[parseSecondaryID(addr)];
 
+      if(devicesData[UNKNOWN_DEVICE+addr])
+        return devicesData[UNKNOWN_DEVICE+addr];
+
       for(var id in devicesData){
         if(devicesData[id].primaryID == addr){
           return devicesData[id];
         }
       }
+
     }
 
     function parseSecondaryID(id){
