@@ -108,7 +108,6 @@ module.exports = function (RED) {
       if(isSecondaryID(id)){
         tmp.secondaryID = id;
         id = parseSecondaryID(id);
-        tmp.SlaveInformation.Id = id;
       }else{
         tmp.primaryID = id;
         id = UNKNOWN_DEVICE + id;
@@ -119,17 +118,24 @@ module.exports = function (RED) {
 
     //return a device by using his secondary or primary id
     function getDevice(addr){
-      if(isSecondaryID(addr))
-        return devicesData[parseSecondaryID(addr)];
+      var device;
 
-      if(devicesData[UNKNOWN_DEVICE+addr])
-        return devicesData[UNKNOWN_DEVICE+addr];
-
-      for(var id in devicesData){
-        if(devicesData[id].primaryID == addr){
-          return devicesData[id];
+      if(isSecondaryID(addr)){
+        device = devicesData[parseSecondaryID(addr)];
+      }
+      else if(devicesData[UNKNOWN_DEVICE+addr]){
+        device = devicesData[UNKNOWN_DEVICE+addr];
+      }
+      else{
+        for(var id in devicesData){
+          if(devicesData[id].primaryID == addr){
+            device = devicesData[id];
+            break;
+          }
         }
       }
+
+      return device;
 
     }
 
@@ -342,7 +348,7 @@ module.exports = function (RED) {
       return true;
     }
 
-    //get device addr data by primary or secondaryID
+    //get device addr data by primary or secondary ID
     function getData(addr, cb){
 
       if(!canDoOperation()){
@@ -351,7 +357,7 @@ module.exports = function (RED) {
         return;
       }
 
-      //add an empty device so I know it has an error
+      //add an empty device so I know if it has an error
       if(!getDevice(addr))
         addEmptyDevice(addr)
 
@@ -361,10 +367,9 @@ module.exports = function (RED) {
           emitEvent('mbError', {data: err.message, message: 'Error while reading device ' + addr + ': ' + err.message});
 
           var device = getDevice(addr);
-          if(device){
-            device.lastUpdate = new Date();
-            device.error = err.message;
-          }
+
+          device.lastUpdate = new Date();
+          device.error = err.message;
 
         }else{ //successfull read
           isSecondaryID(addr) ? data.secondaryID = addr : data.primaryID = addr;
@@ -537,15 +542,13 @@ module.exports = function (RED) {
         delete devicesData[UNKNOWN_DEVICE + data.primaryID];
       }
 
-      devicesData[id].SlaveInformation = data.SlaveInformation;
-      devicesData[id].DataRecord = data.DataRecord;
-      devicesData[id].lastUpdate = new Date();
-
       //update id
       data.primaryID ? devicesData[id].primaryID = data.primaryID : devicesData[id].secondaryID = data.secondaryID;
 
+      devicesData[id].SlaveInformation = data.SlaveInformation;
+      devicesData[id].DataRecord = data.DataRecord;
+      devicesData[id].lastUpdate = new Date();
       devicesData[id].error = null;
-
     });
 
     //triggered when node is removed or project is redeployed
