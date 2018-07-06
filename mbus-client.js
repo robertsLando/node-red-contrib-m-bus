@@ -398,14 +398,19 @@ module.exports = function (RED) {
 
             devicesData[id].SlaveInformation = data.SlaveInformation;
             devicesData[id].DataRecord = data.DataRecord;
-            devicesData[id].lastUpdate = new Date();
-            devicesData[id].error = null;
           }
 
-          emitEvent('mbDeviceUpdated', {data: devicesData[id]});
+          //update last update and remove error
+          devicesData[id].lastUpdate = new Date();
+          devicesData[id].error = null;
+
+          //the device to return to the callback
+          device = devicesData[id];
+
+          emitEvent('mbDeviceUpdated', {data: device});
         }
 
-        if(cb) cb(err,data);
+        if(cb) cb(err,device);
       });
 
     }
