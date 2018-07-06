@@ -106,9 +106,11 @@ module.exports = function (RED) {
     function addEmptyDevice(id){
       var tmp = JSON.parse(JSON.stringify(emptyDevice));
       if(isSecondaryID(id)){
+        tmp.secondaryID = id;
         id = parseSecondaryID(id);
         tmp.SlaveInformation.Id = id;
       }else{
+        tmp.primaryID = id;
         id = UNKNOWN_DEVICE + id;
       }
 
@@ -346,7 +348,7 @@ module.exports = function (RED) {
       }
 
       //add an empty device so I know it has an error
-      if(!devicesData[addr] && !devicesData[UNKNOWN_DEVICE + addr])
+      if(!getDevice(addr))
         addEmptyDevice(addr)
 
       client.getData(addr, function(err, data){
