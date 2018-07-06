@@ -374,13 +374,35 @@ module.exports = function (RED) {
           device.error = err.message;
 
         }else{ //successfull read
+
+          var id = data.SlaveInformation.Id;
+
           isSecondaryID(addr) ? data.secondaryID = addr : data.primaryID = addr;
 
-          //add the new device
-          if(!devicesData[data.SlaveInformation.Id])
-            devicesData[data.SlaveInformation.Id] = data;
+          if(!devicesData[id]){ //add the new device
+            devicesData[id] = data;
+          }else{ //update the existing one
 
-          emitEvent('mbDeviceUpdated', {data:data});
+            //scanned using primary id
+            if(data.primaryID && devicesData[UNKNOWN_DEVICE + data.primaryID]){
+
+              //there isn't any device with this id
+              if(!devicesData[id])
+                devicesData[id] = JSON.parse(JSON.stringify(devicesData[UNKNOWN_DEVICE + data.primaryID]));
+
+              delete devicesData[UNKNOWN_DEVICE + data.primaryID];
+            }
+
+            //update id
+            data.primaryID ? devicesData[id].primaryID = data.primaryID : devicesData[id].secondaryID = data.secondaryID;
+
+            devicesData[id].SlaveInformation = data.SlaveInformation;
+            devicesData[id].DataRecord = data.DataRecord;
+            devicesData[id].lastUpdate = new Date();
+            devicesData[id].error = null;
+          }
+
+          emitEvent('mbDeviceUpdated', {data: devicesData[id]});
         }
 
         if(cb) cb(err,data);
@@ -537,28 +559,6 @@ module.exports = function (RED) {
       devices = data;
       initDevices();
       delayFunction(readDevices);
-    });
-
-    node.on('mbDeviceUpdated', function(data){
-      if(!data || closed || reconnecting) return;
-
-      var id = data.SlaveInformation.Id;
-
-      if(data.primaryID && devicesData[UNKNOWN_DEVICE + data.primaryID]){ //primary id first scan
-
-        if(!devicesData[id])
-          devicesData[id] = JSON.parse(JSON.stringify(devicesData[UNKNOWN_DEVICE + data.primaryID]));
-
-        delete devicesData[UNKNOWN_DEVICE + data.primaryID];
-      }
-
-      //update id
-      data.primaryID ? devicesData[id].primaryID = data.primaryID : devicesData[id].secondaryID = data.secondaryID;
-
-      devicesData[id].SlaveInformation = data.SlaveInformation;
-      devicesData[id].DataRecord = data.DataRecord;
-      devicesData[id].lastUpdate = new Date();
-      devicesData[id].error = null;
     });
 
     //triggered when node is removed or project is redeployed
