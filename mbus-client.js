@@ -26,7 +26,7 @@ module.exports = function (RED) {
     let MAX_QUEUE_DIM = 10;
     let node = this
 
-    var emptyDevice = {SlaveInformation : {}, DataRecord: []};
+    var emptyDevice = {SlaveInformation : {}, DataRecord: [], error: "Not Updated"};
 
     //POLYFILL
     if (!Array.isArray) {
@@ -103,9 +103,11 @@ module.exports = function (RED) {
 
     //Add empty device if it has errors since first read
     function addEmptyDevice(id){
-      var tmp = JSON.parse(JSON.stringify(emptyDevice));
-      tmp.SlaveInformation.Id = parseSecondaryID(id);
-      devicesData[id] = tmp;
+      if(isSecondaryID(id)){
+        var tmp = JSON.parse(JSON.stringify(emptyDevice));
+        tmp.SlaveInformation.Id = parseSecondaryID(id);
+        devicesData[id] = tmp;
+      }    
     }
 
     function parseSecondaryID(id){
