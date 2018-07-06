@@ -351,8 +351,6 @@ module.exports = function (RED) {
 
       client.getData(addr, function(err, data){
 
-        if(cb) cb(err,data);
-
         if (err) {
           emitEvent('mbError', {data: err.message, message: 'Error while reading device ' + addr + ': ' + err.message});
 
@@ -366,6 +364,8 @@ module.exports = function (RED) {
           isSecondaryID(addr) ? data.secondaryID = addr : data.primaryID = addr;
           emitEvent('mbDeviceUpdated', {data:data});
         }
+
+        if(cb) cb(err,data);
       });
 
     }
@@ -534,6 +534,10 @@ module.exports = function (RED) {
       devicesData[id].SlaveInformation = data.SlaveInformation;
       devicesData[id].DataRecord = data.DataRecord;
       devicesData[id].lastUpdate = new Date();
+
+      //update id
+      data.primaryID ? devicesData[id].primaryID = data.primaryID : devicesData[id].secondaryID = data.secondaryID;
+
       devicesData[id].error = null;
 
     });
