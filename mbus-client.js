@@ -114,6 +114,8 @@ module.exports = function (RED) {
       }
 
       devicesData[id] = tmp;
+
+      return tmp;
     }
 
     //return a device by using his secondary or primary id
@@ -357,22 +359,27 @@ module.exports = function (RED) {
         return;
       }
 
-      //add an empty device so I know if it has an error
-      if(!getDevice(addr))
-        addEmptyDevice(addr)
-
       client.getData(addr, function(err, data){
+
+        var device = getDevice(addr);
 
         if (err) {
           emitEvent('mbError', {data: err.message, message: 'Error while reading device ' + addr + ': ' + err.message});
 
-          var device = getDevice(addr);
+          //add an empty device so I know if it has an error
+          if(!device)
+            device = addEmptyDevice(addr)
 
           device.lastUpdate = new Date();
           device.error = err.message;
 
         }else{ //successfull read
           isSecondaryID(addr) ? data.secondaryID = addr : data.primaryID = addr;
+
+          //add the new device
+          if(!device)
+            devicesData[data.SlaveInformation.Id] = data;
+
           emitEvent('mbDeviceUpdated', {data:data});
         }
 
@@ -538,7 +545,10 @@ module.exports = function (RED) {
       var id = data.SlaveInformation.Id;
 
       if(data.primaryID && devicesData[UNKNOWN_DEVICE + data.primaryID]){ //primary id first scan
-        devicesData[id] = JSON.parse(JSON.stringify(devicesData[UNKNOWN_DEVICE + data.primaryID]));
+        
+        if(!devicesData[id])
+          devicesData[id] = JSON.parse(JSON.stringify(devicesData[UNKNOWN_DEVICE + data.primaryID]));
+
         delete devicesData[UNKNOWN_DEVICE + data.primaryID];
       }
 
