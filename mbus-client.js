@@ -358,8 +358,8 @@ module.exports = function (RED) {
 
           var device = getDevice(addr);
           if(device){
-            devicesData[addr].lastUpdate = new Date();
-            devicesData[addr].error = err.message;
+            device.lastUpdate = new Date();
+            device.error = err.message;
           }
 
         }else{ //successfull read
