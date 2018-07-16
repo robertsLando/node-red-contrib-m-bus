@@ -21,7 +21,7 @@ module.exports = function (RED) {
 
     let MbusMaster = require('node-mbus')
     let jsonfile = require('jsonfile')
-    let DEVICES_FILE = 'mbus_devices.json'
+    let DEVICES_FILE = 'mbus_devices'
     let UNKNOWN_DEVICE = 'Unknown_';
     let DELAY_TIMEOUT = 3000;
     let MAX_QUEUE_DIM = 10;
@@ -39,6 +39,8 @@ module.exports = function (RED) {
     //----- NODE CONFIGURATION VARS --------------------------------------------
 
     var RECONNECT_TIMEOUT = parseInt(config.reconnectTimeout) || 5000;
+
+    node.name = config.name
 
     node.clienttype = config.clienttype
 
@@ -82,7 +84,7 @@ module.exports = function (RED) {
 
     //store new devices configuration
     function storeDevices(){
-      jsonfile.writeFile(DEVICES_FILE, devices, function(err) {
+      jsonfile.writeFile(devicesFile(), devices, function(err) {
         if(err)
         emitEvent('mbError', {data: err.message, message: 'Error while writing devices file ' + err.message});
       })
@@ -90,7 +92,7 @@ module.exports = function (RED) {
 
     //load devices from file
     function loadDevices(scanIfFail){
-      jsonfile.readFile(DEVICES_FILE, function(err, data) {
+      jsonfile.readFile(devicesFile(), function(err, data) {
         if(err)
         emitEvent('mbError', {data: err.message, message: 'Error while reading devices file ' + err.message});
 
@@ -116,6 +118,11 @@ module.exports = function (RED) {
       devicesData[id] = tmp;
 
       return tmp;
+    }
+
+    //returns the filepath for storing/retriving devices list file. Example: /home/pi/.node-red
+    function devicesFile(){
+      return RED.settings.userDir + '/' + DEVICES_FILE + (node.name ? '_' + node.name : '') + '.json';
     }
 
     //return a device by using his secondary or primary id
