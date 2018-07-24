@@ -130,8 +130,25 @@ module.exports = function (RED) {
             case 'restart':
               client.restart();
             break;
+            case 'setDevices':
+              if(Array.isArray(msg.payload)){
+
+                for(var i=0; i<msg.payload.length;i++){
+                  if(/[\W_]+/g.test(msg.payload[i])) //matches any non-word char and '_'
+                    break;
+                }
+
+                if(i >= msg.payload.length)
+                  client.setDevices(msg.payload);
+                else //error on index
+                  setStatus('Property of msg.payload at index ' + i + ' is not valid', 'error');
+
+              }else //not an array
+                  setStatus('msg.payload must be an Array of Numbers and/or Strings', 'error');
+
+            break;
             default:
-            node.error('Topic Not Valid, allowed commands are: "scan", "getDevice", "getDevices", "restart" and "setPrimary"', msg)
+            node.error('Topic Not Valid, allowed commands are: "scan", "getDevice", "getDevices", "setDevices", "restart" and "setPrimary"', msg)
           }
     })
 

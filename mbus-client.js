@@ -553,6 +553,13 @@ module.exports = function (RED) {
       restartConnection();
     }
 
+    node.setDevices = function(data){
+      devices = data;
+      storeDevices();
+
+      restartConnection();
+    }
+
     //--------------------------------------------------------------------------
     //-------- NODE EVENTS -----------------------------------------------------
     //--------------------------------------------------------------------------

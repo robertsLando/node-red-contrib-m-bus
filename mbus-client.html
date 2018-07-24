@@ -7,9 +7,9 @@
       clienttype: {value: 'tcp', required: true},
 
       tcpHost: {value: '127.0.0.1', required: true},
-      tcpPort: {value: 2000, required: true, validate: RED.validators.number()},
+      tcpPort: {value: 10001, required: true, validate: RED.validators.number()},
 
-      serialPort: {required: true},
+      serialPort: {value: '/dev/ttyUSB', required: true},
       serialBaudrate: {value: 2400, required: true, validate: RED.validators.number()},
 
       reconnectTimeout: {value: 10000, required: true, validate: RED.validators.number()},
@@ -189,7 +189,7 @@ Initializes the MBusMaster instance to interact with the devices.
     <li><b>serialPort/serialBaudRate</b>: For Serial communication you set the serialPort (e.g. /dev/ttyUSB0) and the serialBaudRate to connect. Default Baudrate is 2400 baut if option is missing</li>
     <li><b>Reconnect timoeut</b>: Milliseconds to wait between two reconnection tries</li>
     <li><b>Auto scan and read</b>: If true the node, once connected, will automatically scan the Mbus network and start reading found devices</li>
-    <li><b>Store scanned devices</b>: If auto scan and read is enabled and this options is true, the node, once connected, will check for existing file <code>mbus_devices.json</code> in <code>.node-red</code> directory, if it doesn't exist it will do the scan and create one with found devices</li>
+    <li><b>Store scanned devices</b>: If auto scan and read is enabled and this options is true, the node, once connected, will check for existing file <code>mbus_devices_<clientName>.json</code> in <code>.node-red</code> directory, if it doesn't exist it will do the scan and create one with found devices</li>
   </ul>
 <h3>References</h3>
   <ul>

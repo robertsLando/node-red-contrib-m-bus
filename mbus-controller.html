@@ -68,7 +68,8 @@
 <code>msg.topic</code> contains the command name. Allowed commands are:
 <ul>
     <li><b>restart</b> - Restarts the client connection.
-    <li><b>scan</b> - Used to trigger a new scan of M-Bus network (will update <code>mbus_devices.json</code> file if <code>storeDevices</code> option is set to true)
+    <li><b>scan</b> - Used to trigger a new scan of M-Bus network (will update <code>mbus_devices_<clientName>.json</code> file if <code>storeDevices</code> option is set to true)
+    <li><b>setDevices</b> - Used to manually set the array with the devices IDs (primary and/or secondary) to read. <code>msg.payload</code> must be a valid array of strings/numbers
     <li><b>getDevices</b> - Used to get the Object with devices all datas and errors.
     <li><b>getDevice</b> - Read a specific device ID specified in <code>msg.payload.address</code>.
     <li><b>setPrimary</b> - Set device Primary ID. <code>msg.payload</code> needs <code>oldAddr</code> and <code>newAddr</code> properties:
