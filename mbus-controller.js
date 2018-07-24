@@ -138,8 +138,10 @@ module.exports = function (RED) {
                     break;
                 }
 
-                if(i >= msg.payload.length)
+                if(i >= msg.payload.length){
                   client.setDevices(msg.payload);
+                  client.emit('mbCommandDone', 'Devices list updated, restarting client...');
+                }
                 else //error on index
                   setStatus('Property of msg.payload at index ' + i + ' is not valid', 'error');
 
