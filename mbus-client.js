@@ -22,7 +22,7 @@ module.exports = function (RED) {
     let MbusMaster = require('node-mbus')
     let jsonfile = require('jsonfile')
     let DEVICES_FILE = 'mbus_devices'
-    let UNKNOWN_DEVICE = 'Unknown_';
+    let PRIMARY_ID = 'Primary_';
     let DELAY_TIMEOUT = 3000;
     let MAX_QUEUE_DIM = 10;
     let node = this
@@ -112,7 +112,7 @@ module.exports = function (RED) {
         id = parseSecondaryID(id);
       }else{
         tmp.primaryID = id;
-        id = UNKNOWN_DEVICE + id;
+        id = PRIMARY_ID + id;
       }
 
       devicesData[id] = tmp;
@@ -132,8 +132,8 @@ module.exports = function (RED) {
       if(isSecondaryID(addr)){
         device = devicesData[parseSecondaryID(addr)];
       }
-      else if(devicesData[UNKNOWN_DEVICE+addr]){
-        device = devicesData[UNKNOWN_DEVICE+addr];
+      else if(devicesData[PRIMARY_ID+addr]){
+        device = devicesData[PRIMARY_ID+addr];
       }
       else{
         for(var id in devicesData){
@@ -391,13 +391,13 @@ module.exports = function (RED) {
           }else{ //update the existing one
 
             //scanned using primary id
-            if(data.primaryID && devicesData[UNKNOWN_DEVICE + data.primaryID]){
+            if(data.primaryID && devicesData[PRIMARY_ID + data.primaryID]){
 
               //there isn't any device with this id
               if(!devicesData[id])
-                devicesData[id] = JSON.parse(JSON.stringify(devicesData[UNKNOWN_DEVICE + data.primaryID]));
+                devicesData[id] = JSON.parse(JSON.stringify(devicesData[PRIMARY_ID + data.primaryID]));
 
-              delete devicesData[UNKNOWN_DEVICE + data.primaryID];
+              delete devicesData[PRIMARY_ID + data.primaryID];
             }
 
             //update id
