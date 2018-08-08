@@ -8,6 +8,7 @@
 
       tcpHost: {value: '127.0.0.1', required: true},
       tcpPort: {value: 10001, required: true, validate: RED.validators.number()},
+      tcpTimeout: {value: 4000, required: true, validate: RED.validators.number()},
 
       serialPort: {value: '/dev/ttyUSB', required: true},
       serialBaudrate: {value: 2400, required: true, validate: RED.validators.number()},
@@ -32,7 +33,7 @@
       node.ports = []
       let clientTypeSelector = $('#node-config-input-clienttype')
       let inputsSerial = $('#node-config-inputs-serial')
-      let inputsTCP = $('#node-config-inputs-tcp')
+      let inputsTCP = $('#node-config-inputs-tcp');
 
       clientTypeSelector.on('focus', function () {
         previous = this.value
@@ -128,6 +129,10 @@
         <div class="form-row">
             <label for="node-config-input-tcpPort"><i class="fa fa-random"></i> <span data-i18n="mbus.label.port"></span></label>
             <input type="text" id="node-config-input-tcpPort" placeholder="2000">
+        </div>
+        <div class="form-row">
+            <label for="node-config-input-tcpTimeout"><i class="icon-time"></i> <span data-i18n="mbus.label.reconnectTimeout"></span></label>
+            <input type="text" id="node-config-input-tcpTimeout" placeholder="4000">
         </div>
     </div>
     <div id="node-config-inputs-serial">

@@ -45,7 +45,8 @@ module.exports = function (RED) {
     node.clienttype = config.clienttype
 
     node.tcpHost = config.tcpHost
-    node.tcpPort = parseInt(config.tcpPort) || 2000
+    node.tcpPort = parseInt(config.tcpPort) || 10001;
+    node.tcpTimeout = parseInt(config.tcpTimeout) || 4000;
 
     node.serialPort = config.serialPort
     node.serialBaudrate = config.serialBaudrate
@@ -279,6 +280,7 @@ module.exports = function (RED) {
       if (node.clienttype === 'tcp') {
         mbusOptions.host = node.tcpHost;
         mbusOptions.port = node.tcpPort;
+        mbusOptions.timeout = node.tcpTimeout;
       }else {
         mbusOptions.serialPort = node.serialPort;
         mbusOptions.serialBaudrate = node.serialBaudrate;
