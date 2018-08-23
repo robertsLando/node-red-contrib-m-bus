@@ -562,6 +562,18 @@ module.exports = function (RED) {
       restartConnection();
     }
 
+    //check for registered nodes using configuration
+    node.registeredNodeList = {}
+
+     node.registerForMbus = function (mbusNode) {
+      node.registeredNodeList[mbusNode.id] = mbusNode
+      if (Object.keys(node.registeredNodeList).length === 1) {
+        node.isClosing = false
+        //start the client (don't use connect here, will stuck the process)
+        restartConnection();
+      }
+    }
+
     //--------------------------------------------------------------------------
     //-------- NODE EVENTS -----------------------------------------------------
     //--------------------------------------------------------------------------
@@ -614,8 +626,6 @@ module.exports = function (RED) {
 
     }); //end on 'close'
 
-    //start the client (don't use connect here, will stuck the process)
-    restartConnection();
   }
 
   RED.nodes.registerType('mbus-client', MbusClientNode)

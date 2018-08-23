@@ -11,6 +11,8 @@ module.exports = function (RED) {
     let client = RED.nodes.getNode(config.client)
     let node = this
 
+    if(client) client.registerForMbus(node);
+
     var commandsQueue = [];
 
     showQueue();

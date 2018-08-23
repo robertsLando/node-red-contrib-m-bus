@@ -73,6 +73,8 @@ module.exports = function (RED) {
       //update status
       subscribedEvents[client.getStatus().event]();
 
+      client.registerForMbus(node);
+
       Object.keys(subscribedEvents).forEach(function(evt) {
           client.on(evt, subscribedEvents[evt]);
       });
@@ -89,7 +91,10 @@ module.exports = function (RED) {
         text: message
       })
     }
-  }
+
+  }//end mbus out
+
+
 
   RED.nodes.registerType('mbus-out', MbusOut)
 }
