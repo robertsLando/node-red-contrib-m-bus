@@ -17,7 +17,33 @@
   },
   "devDependencies": {},
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "changelog": "auto-changelog -p && git add CHANGELOG.md",
+    "release": "read -p 'GITHUB_TOKEN: ' GITHUB_TOKEN && export GITHUB_TOKEN=$GITHUB_TOKEN && release-it"
+  },
+  "release-it": {
+    "github": {
+      "release": true,
+      "assets": [
+        "pkg/*.zip"
+      ]
+    },
+    "git": {
+      "tagName": "v${version}"
+    },
+    "hooks": {
+      "after:bump": "npm run changelog"
+    },
+    "npm": {
+      "publish": true
+    }
+  },
+  "auto-changelog": {
+    "unreleased": true,
+    "commitLimit": false,
+    "replaceText": {
+      "^-[\\s]*": ""
+    }
   },
   "repository": {
     "type": "git",
