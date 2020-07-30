@@ -630,11 +630,15 @@ module.exports = function (RED) {
 
   RED.nodes.registerType('mbus-client', MbusClientNode)
 
-  RED.httpAdmin.get('/mbus/serial/ports', RED.auth.needsPermission('serial.read'), function (req, res) {
+  RED.httpAdmin.get('/mbus/serial/ports', RED.auth.needsPermission('serial.read'), async function (req, res) {
     let SerialPort = require('serialport')
-    SerialPort.list(function (err, ports) {
-      if (err) console.log(err)
+
+    try {
+      var ports = await SerialPort.list()
       res.json(ports)
-    })
+    } catch (error) {
+      res.json([])
+      console.log(error);
+    }
   })
 }
