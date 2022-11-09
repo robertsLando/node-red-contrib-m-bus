@@ -24,9 +24,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint --ext .js, .",
-		"lint-fix": "eslint --fix --ext .js .",
+    "lint-fix": "eslint --fix --ext .js .",
     "changelog": "auto-changelog -p && git add CHANGELOG.md",
-    "release": "read -p 'GITHUB_TOKEN: ' GITHUB_TOKEN && export GITHUB_TOKEN=$GITHUB_TOKEN && release-it"
+    "release": "read -p 'GITHUB_TOKEN: ' GITHUB_TOKEN && export GITHUB_TOKEN=$GITHUB_TOKEN && release-it",
+    "release:beta": "read -p 'GITHUB_TOKEN: ' GITHUB_TOKEN && export GITHUB_TOKEN=$GITHUB_TOKEN && release-it --preRelease=beta"
   },
   "release-it": {
     "github": {
