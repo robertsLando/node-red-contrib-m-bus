@@ -1,117 +1,109 @@
-
-module.exports = function (RED) {
-  'use strict'
-
-  var clientEvents = {
-    'mbError': 'error',
-    'mbClose': 'log',
-    'mbConnect': 'log',
-    'mbReconnect': 'debug',
-    'mbScan': 'debug',
-    'mbPrimarySet': 'debug',
-    'mbScanComplete': 'debug',
-    'mbDeviceUpdated': 'debug',
-    'mbDevicesLoaded': 'debug',
-    'mbCommandExec': 'debug',
-    'mbCommandDone': 'debug'
+module.exports = function init(RED) {
+  const clientEvents = {
+    mbError: 'error',
+    mbClose: 'log',
+    mbConnect: 'log',
+    mbReconnect: 'debug',
+    mbScan: 'debug',
+    mbPrimarySet: 'debug',
+    mbScanComplete: 'debug',
+    mbDeviceUpdated: 'debug',
+    mbDevicesLoaded: 'debug',
+    mbCommandExec: 'debug',
+    mbCommandDone: 'debug',
   };
 
-  function MbusClientNode (config) {
-    RED.nodes.createNode(this, config)
+  function MbusClientNode(config) {
+    RED.nodes.createNode(this, config);
 
-    let MbusMaster = require('node-mbus')
-    let jsonfile = require('jsonfile')
-    let DEVICES_FILE = 'mbus_devices'
-    let PRIMARY_ID = 'Primary_';
-    let DELAY_TIMEOUT = 3000;
-    let MAX_QUEUE_DIM = 10;
-    let node = this
+    const MbusMaster = require('node-mbus');
+    const jsonfile = require('jsonfile');
+    const DEVICES_FILE = 'mbus_devices';
+    const PRIMARY_ID = 'Primary_';
+    const DELAY_TIMEOUT = 3000;
+    const MAX_QUEUE_DIM = 10;
+    const node = this;
 
-    var emptyDevice = {SlaveInformation : {}, DataRecord: [], error: "Not Updated"};
+    const emptyDevice = { SlaveInformation: {}, DataRecord: [], error: 'Not Updated' };
 
-    //POLYFILL
+    // POLYFILL
     if (!Array.isArray) {
-      Array.isArray = function(arg) {
-        return Object.prototype.toString.call(arg) === '[object Array]';
-      };
+      Array.isArray = (arg) => Object.prototype.toString.call(arg) === '[object Array]';
     }
 
-    //----- NODE CONFIGURATION VARS --------------------------------------------
+    // ----- NODE CONFIGURATION VARS --------------------------------------------
 
-    var RECONNECT_TIMEOUT = parseInt(config.reconnectTimeout) || 5000;
+    const RECONNECT_TIMEOUT = parseInt(config.reconnectTimeout) || 5000;
 
-    node.name = config.name
+    node.name = config.name;
 
-    node.clienttype = config.clienttype
+    node.clienttype = config.clienttype;
 
-    node.tcpHost = config.tcpHost
+    node.tcpHost = config.tcpHost;
     node.tcpPort = parseInt(config.tcpPort) || 10001;
     node.tcpTimeout = parseInt(config.tcpTimeout) || 4000;
 
-    node.serialPort = config.serialPort
-    node.serialBaudrate = config.serialBaudrate
+    node.serialPort = config.serialPort;
+    node.serialBaudrate = config.serialBaudrate;
 
     node.storeDevices = config.storeDevices;
     node.disableLogs = config.disableLogs;
-    node.autoScan = config.autoScan === false ? false : true;
+    node.autoScan = config.autoScan !== false;
 
-    //----- PRIVATE VARS -------------------------------------------------------
+    // ----- PRIVATE VARS -------------------------------------------------------
 
-    var client = null
-    var lastStatus = null
+    let client = null;
+    let lastStatus = null;
 
-    var reconnectTimeout = null
-    var delayTimeout = null
-    var closeTimeout = null;
+    let reconnectTimeout = null;
+    let delayTimeout = null;
+    const closeTimeout = null;
 
-    var started = false
-    var closed = false
-    var reconnecting = false
-    var doingOperation = false
+    let started = false;
+    let closed = false;
+    let reconnecting = false;
+    let doingOperation = false;
 
-    //data
-    var devices = []
-    var errors = {};
-    var devicesData = {};
-    var updateIndex = 0;
-    var controllerQueue = [];
-
+    // data
+    let devices = [];
+    let errors = {};
+    let devicesData = {};
+    let updateIndex = 0;
+    let controllerQueue = [];
 
     //--------------------------------------------------------------------------
-    //-------- PRIVATE FUNCTIONS -----------------------------------------------
+    // -------- PRIVATE FUNCTIONS -----------------------------------------------
     //--------------------------------------------------------------------------
 
-    //----- UTILS -----
+    // ----- UTILS -----
 
-    //store new devices configuration
-    function storeDevices(){
-      jsonfile.writeFile(devicesFile(), devices, function(err) {
-        if(err)
-        emitEvent('mbError', {data: err.message, message: 'Error while writing devices file ' + err.message});
-      })
+    // store new devices configuration
+    function storeDevices() {
+      jsonfile.writeFile(devicesFile(), devices, (err) => {
+        if (err) emitEvent('mbError', { data: err.message, message: `Error while writing devices file ${err.message}` });
+      });
     }
 
-    //load devices from file
-    function loadDevices(scanIfFail){
-      jsonfile.readFile(devicesFile(), function(err, data) {
-        if(err)
-        emitEvent('mbError', {data: err.message, message: 'Error while reading devices file ' + err.message});
+    // load devices from file
+    function loadDevices(scanIfFail) {
+      jsonfile.readFile(devicesFile(), (err, data) => {
+        if (err) emitEvent('mbError', { data: err.message, message: `Error while reading devices file ${err.message}` });
 
-        if(isValidArray(data)){
-          emitEvent('mbDevicesLoaded', {data:data});
-        }else if(scanIfFail){
+        if (isValidArray(data)) {
+          emitEvent('mbDevicesLoaded', { data });
+        } else if (scanIfFail) {
           delayFunction(scanSecondary);
         }
-      })
+      });
     }
 
-    //Add empty device if it has errors since first read
-    function addEmptyDevice(id){
-      var tmp = JSON.parse(JSON.stringify(emptyDevice));
-      if(isSecondaryID(id)){
+    // Add empty device if it has errors since first read
+    function addEmptyDevice(id) {
+      const tmp = JSON.parse(JSON.stringify(emptyDevice));
+      if (isSecondaryID(id)) {
         tmp.secondaryID = id;
         id = parseSecondaryID(id);
-      }else{
+      } else {
         tmp.primaryID = id;
         id = PRIMARY_ID + id;
       }
@@ -121,24 +113,22 @@ module.exports = function (RED) {
       return tmp;
     }
 
-    //returns the filepath for storing/retriving devices list file. Example: /home/pi/.node-red
-    function devicesFile(){
-      return RED.settings.userDir + '/' + DEVICES_FILE + (node.name ? '_' + node.name : '') + '.json';
+    // returns the filepath for storing/retriving devices list file. Example: /home/pi/.node-red
+    function devicesFile() {
+      return `${RED.settings.userDir}/${DEVICES_FILE}${node.name ? `_${node.name}` : ''}.json`;
     }
 
-    //return a device by using his secondary or primary id
-    function getDevice(addr){
-      var device;
+    // return a device by using his secondary or primary id
+    function getDevice(addr) {
+      let device;
 
-      if(isSecondaryID(addr)){
+      if (isSecondaryID(addr)) {
         device = devicesData[parseSecondaryID(addr)];
-      }
-      else if(devicesData[PRIMARY_ID+addr]){
-        device = devicesData[PRIMARY_ID+addr];
-      }
-      else{
-        for(var id in devicesData){
-          if(devicesData[id].primaryID == addr){
+      } else if (devicesData[PRIMARY_ID + addr]) {
+        device = devicesData[PRIMARY_ID + addr];
+      } else {
+        for (const id in devicesData) {
+          if (devicesData[id].primaryID === addr) {
             device = devicesData[id];
             break;
           }
@@ -146,142 +136,129 @@ module.exports = function (RED) {
       }
 
       return device;
-
     }
 
-    function parseSecondaryID(id){
-      id = id.toString().substr(0,8);
-      id = parseInt(id); //remove leading 0
+    function parseSecondaryID(id) {
+      id = id.toString().substr(0, 8);
+      id = parseInt(id); // remove leading 0
       return id.toString();
     }
 
-    function isSecondaryID(id){
-      return id.toString().length == 16;
+    function isSecondaryID(id) {
+      return id.toString().length === 16;
     }
 
-    //Delay a function
-    function delayFunction(fun){
-      delayTimeout = setTimeout(fun, DELAY_TIMEOUT)
+    // Delay a function
+    function delayFunction(fun) {
+      delayTimeout = setTimeout(fun, DELAY_TIMEOUT);
     }
 
-    //Check devices array is valid (just contains numbers or strings)
-    function isValidArray(data){
-      if(!Array.isArray(data)){
+    // Check devices array is valid (just contains numbers or strings)
+    function isValidArray(data) {
+      if (!Array.isArray(data)) {
         return false;
       }
 
-      for (var i = 0; i < data.length; i++) {
-        if(typeof data[i] != 'string' && typeof data[i] != 'number')
-        return false;
+      for (let i = 0; i < data.length; i++) {
+        if (typeof data[i] !== 'string' && typeof data[i] !== 'number') return false;
       }
 
       return true;
     }
 
-    //read next device
-    function readDevices(){
-
-      if(closed){
-        emitClose()
+    // read next device
+    function readDevices() {
+      if (closed) {
+        emitClose();
         return;
       }
 
-      if(!node.autoScan) return;
+      if (!node.autoScan) return;
 
-      if(!devices || devices.length == 0)
-      {
-        emitEvent('mbError', {data: "No device to update", message: 'No device to update'});
+      if (!devices || devices.length === 0) {
+        emitEvent('mbError', { data: 'No device to update', message: 'No device to update' });
         return;
       }
 
-      //all devices read, restart from 0
-      if(updateIndex >= devices.length)
-      updateIndex = 0;
+      // all devices read, restart from 0
+      if (updateIndex >= devices.length) updateIndex = 0;
 
-      var addr = devices[updateIndex];
+      const addr = devices[updateIndex];
 
-      getData(addr, function(err,data){
-
-        //move index to next (even if there is an error)
+      getData(addr, (err, data) => {
+        // move index to next (even if there is an error)
         updateIndex++;
 
         if (err) {
-
           errors[addr] = true;
 
-          //all devices have an error, restart connection
+          // all devices have an error, restart connection
           if (Object.keys(errors).length === devices.length) {
-            restartConnection()
-          }else
-            node.doNextOperation();
-
-        }else{ //successfull read
-
-          //remove error device if present
-          if(errors[addr])
-          delete errors[addr];
+            restartConnection();
+          } else node.doNextOperation();
+        } else { // successfull read
+          // remove error device if present
+          if (errors[addr]) delete errors[addr];
 
           node.doNextOperation();
         }
-
-      })
-
+      });
     }
 
-    //wraps a function to queue
+    // wraps a function to queue
     function wrapFunction(fn, context, params) {
-      return function() {
+      return () => {
         fn.apply(context, params);
       };
     }
 
-    //emit an event with data and log it if it contains a message
-    function emitEvent(event, data){
-      var logEvent = clientEvents[event];
-      if(logEvent){
+    // emit an event with data and log it if it contains a message
+    function emitEvent(event, data) {
+      const logEvent = clientEvents[event];
+      if (logEvent) {
+        lastStatus = { event, data };
+        if (data && data.data) {
+          node.emit(event, data.data);
+        } else {
+          node.emit(event);
+        }
 
-        lastStatus = {event: event, data: data};
-        data && data.data ? node.emit(event, data.data) : node.emit(event);
-
-        if(data && data.message && !node.disableLogs)
-        node[logEvent](data.message);
+        if (data && data.message && !node.disableLogs) node[logEvent](data.message);
       }
     }
 
-    function emitClose(){
-      emitEvent('mbClose', {data: 'Closed', message: 'Connection closed'});
+    function emitClose() {
+      emitEvent('mbClose', { data: 'Closed', message: 'Connection closed' });
     }
 
-    //----- CONNECTION MANAGEMENT ------
+    // ----- CONNECTION MANAGEMENT ------
 
-    function isConnected(){
+    function isConnected() {
       return client && client.connect();
     }
 
-    function initDevices(){
-      if(devices){
-        for (var i = 0; i < devices.length; i++) {
+    function initDevices() {
+      if (devices) {
+        for (let i = 0; i < devices.length; i++) {
           addEmptyDevice(devices[i]);
         }
       }
     }
 
-    //connect the client
-    function connect(){
-
-      //do a connect just if client isn't already started or there is a reconnection
-      if((started && !reconnecting) || closed)
-      return;
+    // connect the client
+    function connect() {
+      // do a connect just if client isn't already started or there is a reconnection
+      if ((started && !reconnecting) || closed) return;
 
       started = true;
 
-      var mbusOptions = {autoConnect: true};
+      const mbusOptions = { autoConnect: true };
 
       if (node.clienttype === 'tcp') {
         mbusOptions.host = node.tcpHost;
         mbusOptions.port = node.tcpPort;
         mbusOptions.timeout = node.tcpTimeout;
-      }else {
+      } else {
         mbusOptions.serialPort = node.serialPort;
         mbusOptions.serialBaudrate = node.serialBaudrate;
       }
@@ -289,315 +266,292 @@ module.exports = function (RED) {
       client = new MbusMaster(mbusOptions);
 
       try {
-        client.connect(function(err){
+        client.connect((err) => {
+          reconnecting = false; // re-enable reconnection
 
-          reconnecting = false; //re-enable reconnection
-
-          if(err){
-            emitEvent('mbError', {data: err.message, message: 'Error while connecting ' + err.message});
+          if (err) {
+            emitEvent('mbError', { data: err.message, message: `Error while connecting ${err.message}` });
             restartConnection();
-          }
-          else{
-            emitEvent('mbConnect', {message: 'Connected'});
+          } else {
+            emitEvent('mbConnect', { message: 'Connected' });
 
-            if(node.autoScan){
-              if(node.storeDevices)
-                loadDevices(true);
-              else
-                delayFunction(scanSecondary);
+            if (node.autoScan) {
+              if (node.storeDevices) loadDevices(true);
+              else delayFunction(scanSecondary);
             }
           }
         });
       } catch (e) {
-        emitEvent('mbError', {data: e.message, message: 'Exception while connecting ' + e.message});
+        emitEvent('mbError', { data: e.message, message: `Exception while connecting ${e.message}` });
         reconnecting = false;
         restartConnection();
       }
     }
 
-    //close the client
-    function close(cb){
+    // close the client
+    function close(cb) {
       if (client) {
-        client.close(function (err) {
-          if(err)
-          emitEvent('mbError', {data: err.message, message: 'Error while closing client ' + err.message});
+        client.close((err) => {
+          if (err) emitEvent('mbError', { data: err.message, message: `Error while closing client ${err.message}` });
 
           emitClose();
           cb();
-
         });
-      }else{
-        emitClose()
-        cb()
+      } else {
+        emitClose();
+        cb();
       }
     }
 
-    function restartConnection(){
-
-      //stop reconnection if node is being closed or there is a reconnection in progress
-      if(closed || reconnecting)
-        return;
+    function restartConnection() {
+      // stop reconnection if node is being closed or there is a reconnection in progress
+      if (closed || reconnecting) return;
 
       reconnecting = true;
 
-      emitEvent('mbReconnect', { message: 'Restarting client...' })
+      emitEvent('mbReconnect', { message: 'Restarting client...' });
 
-      reconnectTimeout = setTimeout(function(){
-        close(function(){
+      reconnectTimeout = setTimeout(() => {
+        close(() => {
           connect();
         });
       }, RECONNECT_TIMEOUT);
     }
 
-    //----- M-BUS METHODS ------
+    // ----- M-BUS METHODS ------
 
-    function canDoOperation(){
-      if(reconnecting || closed || !isConnected() || closeTimeout){
+    function canDoOperation() {
+      if (reconnecting || closed || !isConnected() || closeTimeout) {
         return false;
       }
 
       return true;
     }
 
-    //get device addr data by primary or secondary ID
-    function getData(addr, cb){
-
-      if(!canDoOperation()){
-        if(cb) cb(new Error('Connection not open'), null)
-        emitEvent('mbError', {data: 'Connection not open', message: 'Error while reading device ' + addr + ': ' + 'Connection not open'});
+    // get device addr data by primary or secondary ID
+    function getData(addr, cb) {
+      if (!canDoOperation()) {
+        if (cb) cb(new Error('Connection not open'), null);
+        emitEvent('mbError', { data: 'Connection not open', message: `Error while reading device ${addr}: Connection not open` });
         return;
       }
 
-      client.getData(addr, function(err, data){
-
-        var device = getDevice(addr);
+      client.getData(addr, (err, data) => {
+        let device = getDevice(addr);
 
         if (err) {
-          emitEvent('mbError', {data: err.message, message: 'Error while reading device ' + addr + ': ' + err.message});
+          emitEvent('mbError', { data: err.message, message: `Error while reading device ${addr}: ${err.message}` });
 
-          //add an empty device so I know if it has an error
-          if(!device)
-            device = addEmptyDevice(addr)
+          // add an empty device so I know if it has an error
+          if (!device) device = addEmptyDevice(addr);
 
           device.lastUpdate = new Date();
           device.error = err.message;
+        } else { // successfull read
+          const id = data.SlaveInformation.Id;
 
-        }else{ //successfull read
+          if (isSecondaryID(addr)) {
+            data.secondaryID = addr;
+          } else {
+            data.primaryID = addr;
+          }
 
-          var id = data.SlaveInformation.Id;
-
-          isSecondaryID(addr) ? data.secondaryID = addr : data.primaryID = addr;
-
-          if(!devicesData[id]){ //add the new device
+          if (!devicesData[id]) { // add the new device
             devicesData[id] = data;
-          }else{ //update the existing one
-
-            //scanned using primary id
-            if(data.primaryID && devicesData[PRIMARY_ID + data.primaryID]){
-
-              //there isn't any device with this id
-              if(!devicesData[id])
-                devicesData[id] = JSON.parse(JSON.stringify(devicesData[PRIMARY_ID + data.primaryID]));
+          } else { // update the existing one
+            // scanned using primary id
+            if (data.primaryID && devicesData[PRIMARY_ID + data.primaryID]) {
+              // there isn't any device with this id
+              if (!devicesData[id]) {
+                devicesData[id] = JSON.parse(
+                  JSON.stringify(devicesData[PRIMARY_ID + data.primaryID]),
+                );
+              }
 
               delete devicesData[PRIMARY_ID + data.primaryID];
             }
 
-            //update id
-            data.primaryID ? devicesData[id].primaryID = data.primaryID : devicesData[id].secondaryID = data.secondaryID;
+            // update id
+            if (data.primaryID) {
+              devicesData[id].primaryID = data.primaryID;
+            } else {
+              devicesData[id].secondaryID = data.secondaryID;
+            }
 
             devicesData[id].SlaveInformation = data.SlaveInformation;
             devicesData[id].DataRecord = data.DataRecord;
           }
 
-          //update last update and remove error
+          // update last update and remove error
           devicesData[id].lastUpdate = new Date();
           devicesData[id].error = null;
 
-          //the device to return to the callback
+          // the device to return to the callback
           device = devicesData[id];
 
-          emitEvent('mbDeviceUpdated', {data: device});
+          emitEvent('mbDeviceUpdated', { data: device });
         }
 
-        if(cb) cb(err,device);
+        if (cb) cb(err, device);
       });
-
     }
 
-    //get device addr data
-    function setPrimary(oldAddr, newAddr, cb){
-
-      if(!canDoOperation()){
-        if(cb) cb(new Error('Connection not open'), null)
-        emitEvent('mbError', {data: 'Connection not open', message: 'Error while setting primary address '+ newAddr +' to ' + oldAddr + ': ' + 'Connection not open'});
+    // get device addr data
+    function setPrimary(oldAddr, newAddr, cb) {
+      if (!canDoOperation()) {
+        if (cb) cb(new Error('Connection not open'), null);
+        emitEvent('mbError', { data: 'Connection not open', message: `Error while setting primary address ${newAddr} to ${oldAddr}: Connection not open` });
         return;
       }
 
-      client.setPrimaryId(oldAddr, newAddr, function(err){
-
-        if(cb) cb(err);
+      client.setPrimaryId(oldAddr, newAddr, (err) => {
+        if (cb) cb(err);
 
         if (err) {
-          emitEvent('mbError', {data: err.message, message: 'Error while setting primary address '+ newAddr +' to ' + oldAddr + ': ' + err.message});
-
-        }else{ //successfull read
-          emitEvent('mbPrimarySet', {data: {old: oldAddr, new:newAddr}});
+          emitEvent('mbError', { data: err.message, message: `Error while setting primary address ${newAddr} to ${oldAddr}: ${err.message}` });
+        } else { // successfull read
+          emitEvent('mbPrimarySet', { data: { old: oldAddr, new: newAddr } });
         }
       });
-
     }
 
-
-    //scan secondary IDs
-    function scanSecondary(cb){
-
-      if(!canDoOperation()){
-        if(cb) cb(new Error('Connection not open'), null)
-        emitEvent('mbError', {data:'Connection not open', message: 'Error while scanning: Connection not open'});
+    // scan secondary IDs
+    function scanSecondary(cb) {
+      if (!canDoOperation()) {
+        if (cb) cb(new Error('Connection not open'), null);
+        emitEvent('mbError', { data: 'Connection not open', message: 'Error while scanning: Connection not open' });
         return;
       }
 
-      emitEvent('mbScan', {message: 'Scan started...'});
+      emitEvent('mbScan', { message: 'Scan started...' });
 
-      client.scanSecondary(function(err, data) {
-        if(cb) cb(err,data);
+      client.scanSecondary((err, data) => {
+        if (cb) cb(err, data);
 
-        if(err){
-          emitEvent('mbError', {data:err.message, message: 'Error while scanning: ' + err.message});
-          restartConnection()
+        if (err) {
+          emitEvent('mbError', { data: err.message, message: `Error while scanning: ${err.message}` });
+          restartConnection();
+        } else {
+          emitEvent('mbScanComplete', { data, message: 'Scan completed' });
         }
-        else{
-          emitEvent('mbScanComplete', {data:data, message: 'Scan completed'});
-        }
-
       });
-
     }
 
-
     //--------------------------------------------------------------------------
-    //-------- PUBLIC FUNCTIONS ------------------------------------------------
+    // -------- PUBLIC FUNCTIONS ------------------------------------------------
     //--------------------------------------------------------------------------
 
-    //add a command to queue
-    node.queueOperation = function(functionName, data){
-
-      var fn;
+    // add a command to queue
+    node.queueOperation = (functionName, data) => {
+      let fn;
 
       try {
-        fn = eval(functionName)
+        // eslint-disable-next-line no-eval
+        fn = eval(functionName);
       } catch (e) {
-        emitEvent('mbError', {data: e.message, message: 'Exception while queuing command ' + e.message});
+        emitEvent('mbError', { data: e.message, message: `Exception while queuing command ${e.message}` });
       }
 
-      if(fn)
-      controllerQueue.push({
-        fn: wrapFunction(fn, node, data),
-        args: data,
-        name: functionName
-      });
+      if (fn) {
+        controllerQueue.push({
+          fn: wrapFunction(fn, node, data),
+          args: data,
+          name: functionName,
+        });
+      }
 
-      if(controllerQueue.length > MAX_QUEUE_DIM)
-        controllerQueue.shift();
+      if (controllerQueue.length > MAX_QUEUE_DIM) controllerQueue.shift();
 
-      if((!node.autoScan || devices.length == 0) && !doingOperation){
+      if ((!node.autoScan || devices.length === 0) && !doingOperation) {
         node.doNextOperation();
       }
-    }
+    };
 
-    //dequeue a command or restart reading devices if no more commands in queue
-    node.doNextOperation = function(){
-      if(controllerQueue.length > 0){ //there are operation in queue
-        var op = controllerQueue.shift();
+    // dequeue a command or restart reading devices if no more commands in queue
+    node.doNextOperation = () => {
+      if (controllerQueue.length > 0) { // there are operation in queue
+        const op = controllerQueue.shift();
 
         doingOperation = true;
 
-        var fnName = op.name;
-        var message = "Executing command: ";
+        const fnName = op.name;
+        let message = 'Executing command: ';
 
         switch (fnName) {
           case 'setPrimary':
-          message += 'setPrimary Old=' + (op.args ? op.args[0] : 'null') + " New=" + (op.args ? op.args[1] : 'null');
-          break;
+            message += `setPrimary Old=${op.args ? op.args[0] : 'null'} New=${op.args ? op.args[1] : 'null'}`;
+            break;
           case 'getData':
-          message += 'getDevice ID=' + (op.args ? op.args[0] : 'null');
-          break;
+            message += `getDevice ID=${op.args ? op.args[0] : 'null'}`;
+            break;
           case 'scanSecondary':
-          message += 'scan'
-          break;
+            message += 'scan';
+            break;
           default:
-          message += "Undefined"
+            message += 'Undefined';
         }
 
-        emitEvent('mbCommandExec', {data: message, message: message});
+        emitEvent('mbCommandExec', { data: message, message });
 
         op.fn();
-      }
-      else{ //no more queued operations, restart reads
-        if(node.autoScan)
-          readDevices();
+      } else { // no more queued operations, restart reads
+        if (node.autoScan) readDevices();
 
         doingOperation = false;
       }
-    }
+    };
 
-    //gewt devices data and errors
-    node.getStats = function(){
-      return {devices: devicesData, errors: errors}
-    }
+    // get devices data and errors
+    node.getStats = () => ({ devices: devicesData, errors });
 
-    //get currently status or 'closed'
-    node.getStatus = function(){
-      return lastStatus || {event: 'mbClose'};
-    }
+    // get currently status or 'closed'
+    node.getStatus = () => lastStatus || { event: 'mbClose' };
 
-    node.restart = function(){
+    node.restart = () => {
       restartConnection();
-    }
+    };
 
-    node.setDevices = function(data){
+    node.setDevices = (data) => {
       devices = data;
       storeDevices();
 
       restartConnection();
-    }
+    };
 
-    //check for registered nodes using configuration
-    node.registeredNodeList = {}
+    // check for registered nodes using configuration
+    node.registeredNodeList = {};
 
-     node.registerForMbus = function (mbusNode) {
-      node.registeredNodeList[mbusNode.id] = mbusNode
+    node.registerForMbus = (mbusNode) => {
+      node.registeredNodeList[mbusNode.id] = mbusNode;
       if (Object.keys(node.registeredNodeList).length === 1) {
-        node.isClosing = false
-        //start the client (don't use connect here, will stuck the process)
+        node.isClosing = false;
+        // start the client (don't use connect here, will stuck the process)
         restartConnection();
       }
-    }
+    };
 
     //--------------------------------------------------------------------------
-    //-------- NODE EVENTS -----------------------------------------------------
+    // -------- NODE EVENTS -----------------------------------------------------
     //--------------------------------------------------------------------------
 
-    node.on('mbScanComplete', function(data){
+    node.on('mbScanComplete', (data) => {
       devices = data;
       initDevices();
 
-      if(node.storeDevices)
-        storeDevices();
+      if (node.storeDevices) storeDevices();
 
       readDevices();
     });
 
-    node.on('mbDevicesLoaded', function(data){
+    node.on('mbDevicesLoaded', (data) => {
       devices = data;
       initDevices();
       delayFunction(readDevices);
     });
 
-    //triggered when node is removed or project is redeployed
-    node.on('close', function (done) {
-
-      //init private vars
+    // triggered when node is removed or project is redeployed
+    node.on('close', (done) => {
+      // init private vars
 
       devices = [];
       errors = {};
@@ -609,36 +563,35 @@ module.exports = function (RED) {
 
       closed = true;
 
-      //stop running timeouts
+      // stop running timeouts
 
-      if(reconnectTimeout){
+      if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
         reconnectTimeout = null;
       }
 
-      if(delayTimeout){
+      if (delayTimeout) {
         clearTimeout(delayTimeout);
         delayTimeout = null;
       }
 
-      //close client
+      // close client
       close(done);
-
-    }); //end on 'close'
-
+    }); // end on 'close'
   }
 
-  RED.nodes.registerType('mbus-client', MbusClientNode)
+  RED.nodes.registerType('mbus-client', MbusClientNode);
 
-  RED.httpAdmin.get('/mbus/serial/ports', RED.auth.needsPermission('serial.read'), async function (req, res) {
-    let SerialPort = require('serialport')
+  RED.httpAdmin.get('/mbus/serial/ports', RED.auth.needsPermission('serial.read'), async (req, res) => {
+    const SerialPort = require('serialport');
 
     try {
-      var ports = await SerialPort.list()
-      res.json(ports)
+      const ports = await SerialPort.list();
+      res.json(ports);
     } catch (error) {
-      res.json([])
-      console.log(error);
+      res.json([]);
+      // eslint-disable-next-line no-console
+      console.error(error);
     }
-  })
-}
+  });
+};
