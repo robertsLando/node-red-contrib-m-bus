@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "jsonfile": "^6.1.0",
-    "node-mbus": "^2.2.1",
+    "node-mbus": "^2.2.2",
     "serialport": "^12.0.0"
   },
   "devDependencies": {
