@@ -49,7 +49,8 @@ module.exports = (RED) => {
               node.error(err);
               setStatus(`Error while scanning: ${err.message}`, 'error');
             } else {
-              node.send({ topic: 'scan', payload: data });
+              msg.payload = data;
+              node.send(msg);
               client.emit('mbCommandDone', 'Scanning done');
             }
 
@@ -74,7 +75,8 @@ module.exports = (RED) => {
               node.error(err);
               setStatus(`Error while reading device ID ${cmd ? cmd.id : ''}: ${err.message}`, 'error');
             } else {
-              node.send({ topic: 'getDevice', payload: data });
+              msg.payload = data;
+              node.send(msg);
               client.emit('mbCommandDone', `Device updated ID ${cmd ? cmd.id : ''}`);
             }
 
@@ -108,7 +110,8 @@ module.exports = (RED) => {
               node.error(err);
               setStatus(`Error while setting new primary ID ${cmd.new} of device ${cmd ? cmd.old : ''}: ${err.message}`, 'error');
             } else {
-              node.send({ topic: 'setPrimary', payload: { newAddr: cmd.new, oldAddr: cmd.old } });
+              msg.payload = { newAddr: cmd.new, oldAddr: cmd.old };
+              node.send(msg);
               client.emit('mbCommandDone', `New primary ID ${cmd.new} set to device ${cmd.old}`);
             }
 
@@ -117,7 +120,8 @@ module.exports = (RED) => {
 
           break;
         case 'getDevices':
-          node.send({ topic: 'getDevices', payload: client.getStats() });
+          msg.payload = client.getStats();
+          node.send(msg);
           break;
         case 'restart':
           client.restart();
