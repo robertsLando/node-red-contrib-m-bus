@@ -29,8 +29,15 @@ You need an M-Bus-Serial or an M-Bus-Ethernet (TCP) converter. Here a list of te
   - https://www.adfweb.com/Home/products/mbus_gateway.asp?frompg=nav8_5 (200 Euro)
   - https://m.de.aliexpress.com/item/32755430755.html?trace=wwwdetail2mobilesitedetail&productId=32755430755&productSubject=MBUS-to-USB-master-module-MBUS-device-debugging-dedicated-no-power-supply (30.58 $)
   - https://www.relay.de/produkte/m-bus-master/pegelwandler-pw-250/
+* SERIAL:
+  - https://eshop.eeas.cz/en/converter-mbus-to-rs232-for-15-devices (RS232, 15 devices)
+  - https://eshop.eeas.cz/en/converter-mbus-to-rs485-for-15-devices (RS485, 15 devices)
 * TCP:
   - http://www.adfweb.com/home/products/details.asp?tid=HD67030-B2-80
+  - https://eshop.eeas.cz/en/converter-mbus-to-ethernet-for-15-devices (15 devices)
+  - https://eshop.eeas.cz/en/converter-mbus-to-ethernet-for-15-devices-with-poe-supply (15 devices with PoE)
+
+*Note: eeas.cz also offers variants for 60 devices.*
 
 # Nodes
 
